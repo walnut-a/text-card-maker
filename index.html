@@ -360,7 +360,7 @@
 
           <div class="field">
             <label for="contentInput">文字内容</label>
-            <textarea id="contentInput" spellcheck="false" placeholder="直接粘贴文章、摘录、短评、金句都可以。段落之间用空行分隔。"></textarea>
+            <textarea id="contentInput" spellcheck="false" placeholder="直接粘贴文章、摘录、短评、金句都可以。段落之间用空行分隔。" autofocus></textarea>
           </div>
 
           <div class="subgrid">
@@ -686,12 +686,19 @@
         return input.replace(/\r\n/g, "\n").replace(/\u00a0/g, " ").trim();
       }
 
+      function addSpacesBetweenCJKAndAlphanumeric(text) {
+        // Add space between CJK characters and English letters/numbers
+        return text
+          .replace(/([\u4e00-\u9fa5\u3040-\u30ff])([a-zA-Z0-9])/g, '$1 $2')
+          .replace(/([a-zA-Z0-9])([\u4e00-\u9fa5\u3040-\u30ff])/g, '$1 $2');
+      }
+
       function parseContent(text) {
         const normalized = normalizeText(text);
         const blocks = normalized
           ? normalized
               .split(/\n\s*\n+/)
-              .map((block) => block.replace(/\n+/g, " ").replace(/\s+/g, " ").trim())
+              .map((block) => addSpacesBetweenCJKAndAlphanumeric(block.replace(/\n+/g, " ").replace(/\s+/g, " ").trim()))
               .filter(Boolean)
           : [];
 
@@ -1009,8 +1016,8 @@
       bindRealtimeRefresh();
       bootQr();
 
-      // Immediate draw to prevent blank screen
-      fillSample();
+      // Immediate draw to show empty state
+      drawCard();
 
       // Redraw when fonts are ready for high-fidelity rendering
       if (document.fonts && document.fonts.ready) {
