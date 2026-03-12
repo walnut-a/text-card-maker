@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>文字分享卡片工坊</title>
+    <link
+      rel="icon"
+      href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="%2308111d"/><path d="M18 18h28v6H18zm0 11h20v6H18zm0 11h28v6H18z" fill="%23ffd36d"/></svg>'
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <style>
+      :root {
+        --bg: #FAFAFA;
+        --panel: #FFFFFF;
+        --panel-border: rgba(0, 0, 0, 0.06);
+        --text: #1a1a1a;
+        --muted: #666666;
+        --accent: #000000;
+        --accent-strong: #333333;
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+        --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+        --font-serif: "Songti SC", "Noto Serif SC", STSong, "Microsoft YaHei", serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0A0A0A;
+          --panel: #141414;
+          --panel-border: rgba(255, 255, 255, 0.08);
+          --text: #EDEDED;
+          --muted: #A1A1A1;
+          --accent: #FFFFFF;
+          --accent-strong: #E5E5E5;
+          --shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+        }
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background-color: var(--bg);
+        color: var(--text);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        transition: background-color 0.3s ease;
+      }
+
+      .app {
+        width: min(1280px, calc(100vw - 48px));
+        margin: 0 auto;
+        padding: 48px 0 80px;
+      }
+
+      .hero {
+        margin-bottom: 48px;
+      }
+
+      h1 {
+        margin: 0 0 16px;
+        font-size: clamp(28px, 4vw, 42px);
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.6;
+        max-width: 600px;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 380px minmax(0, 1fr);
+        gap: 32px;
+        align-items: start;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+      }
+
+      .controls {
+        padding: 32px;
+        display: grid;
+        gap: 24px;
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .field {
+        display: grid;
+        gap: 8px;
+      }
+
+      .field label, .meta-chip span {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+
+      textarea, input {
+        width: 100%;
+        border: 1px solid var(--panel-border);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text);
+        padding: 12px 14px;
+        font-family: inherit;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 200px;
+        line-height: 1.6;
+      }
+
+      textarea:focus, input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+
+      .subgrid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .custom-select-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .select-btn {
+        appearance: none;
+        background: transparent;
+        border: 1px solid var(--panel-border);
+        color: var(--muted);
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 0.2s;
+        flex: 1;
+        text-align: center;
+      }
+
+      .select-btn:hover {
+        border-color: var(--muted);
+        color: var(--text);
+      }
+
+      .select-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--bg);
+      }
+
+      .select-btn .color-dot { display: none; }
+      .select-btn .ratio-icon { display: none; }
+
+      .upload-zone {
+        border: 1px dashed var(--panel-border);
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 13px;
+        transition: border-color 0.2s;
+      }
+
+      .upload-zone:hover {
+        border-color: var(--accent);
+        color: var(--text);
+      }
+      
+      .upload-icon { display: none; }
+
+      .clear-img-btn {
+        margin-top: 8px;
+        padding: 4px 10px;
+        font-size: 12px;
+        background: transparent;
+        border: 1px solid var(--panel-border);
+        color: var(--text);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 8px;
+      }
+
+      button {
+        appearance: none;
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: var(--bg);
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      button:hover {
+        opacity: 0.9;
+      }
+
+      button.secondary {
+        background: transparent;
+        color: var(--text);
+        border-color: var(--panel-border);
+      }
+
+      button.secondary:hover {
+        border-color: var(--muted);
+      }
+
+
+
+      .helper {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .preview-panel {
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+      }
+
+      .preview-head {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      
+      .preview-head h2 { color: var(--text); }
+
+      .canvas-shell {
+        width: 100%;
+        max-width: 540px;
+        border-radius: 2px;
+        box-shadow: var(--shadow);
+        background: transparent;
+        padding: 0;
+        border: none;
+      }
+
+      .canvas-shell::before { display: none; }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 0;
+      }
+
+      .status { color: #e11d48; margin-top: 16px; font-size: 13px; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;}
+
+      /* 移动端增强适配 (Mobile Responsive Enhancements) */
+      @media (max-width: 960px) {
+        .app {
+          padding: 24px 16px 64px;
+        }
+        
+        .workspace {
+          grid-template-columns: 1fr;
+          gap: 40px;
+        }
+
+        .controls {
+          padding: 24px 20px;
+        }
+
+        h1 {
+          font-size: 28px;
+        }
+
+        .hero {
+          margin-bottom: 32px;
+        }
+
+        .preview-panel {
+          padding: 0;
+          margin-top: 16px;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .subgrid {
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+
+        .actions {
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+
+        .actions button {
+          font-size: 13px;
+          padding: 10px;
+        }
+
+
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="hero">
+        
+        <h1>Text Card Maker</h1>
+        <p>最少打扰的单文件文字分享卡片生成器。输入纯文本即可获得排印精美的分享切片。</p>
+      </section>
+
+      <section class="workspace">
+        <form class="panel controls" id="controlsForm">
+          <h2 class="section-title">内容输入</h2>
+
+          <div class="field">
+            <label for="contentInput">文字内容</label>
+            <textarea id="contentInput" spellcheck="false" placeholder="直接粘贴文章、摘录、短评、金句都可以。段落之间用空行分隔。"></textarea>
+          </div>
+
+          <div class="subgrid">
+            <div class="field">
+              <label for="linkInput">链接地址 (生成二维码)</label>
+              <input id="linkInput" type="url" placeholder="https://..." />
+            </div>
+
+            <div class="field">
+              <label>卡片风格</label>
+              <div class="custom-select-group" id="themeSelectGroup" style="grid-template-columns: repeat(4, 1fr);">
+                <!-- Dynamically rendered by JS -->
+              </div>
+            </div>
+            <div class="field">
+              <label>字体选择</label>
+              <div class="custom-select-group" id="fontSelectGroup">
+                <!-- Dynamically rendered by JS -->
+              </div>
+            </div>
+            <div class="field">
+              <label>图片比例</label>
+              <div class="custom-select-group" id="sizeSelectGroup">
+                <!-- Dynamically rendered by JS -->
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="button" id="downloadButton">下载 PNG</button>
+            <button type="button" class="secondary" id="clearButton">清空内容</button>
+            <button type="button" class="secondary" id="sampleButton">填入示例</button>
+          </div>
+
+
+
+          <p class="helper">
+            导出内容以当前预览为准。二维码会在链接合法时自动出现；如果不填链接，卡片会切换成纯文字版式。
+          </p>
+        </form>
+
+        <section class="panel preview-panel">
+          <div class="preview-head">
+            <div>
+              <h2 class="section-title">实时预览</h2>
+              <p>预览与下载共用同一张 Canvas，GitHub Pages 可直接托管。</p>
+            </div>
+            <p id="dimensionLabel">1200 × 1500</p>
+          </div>
+
+          <div class="canvas-shell">
+            <canvas id="cardCanvas" width="1200" height="1500"></canvas>
+          </div>
+
+          <p class="status" id="statusText"></p>
+          <canvas id="qrCanvas" class="sr-only" width="280" height="280" aria-hidden="true"></canvas>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const sampleText = `把日常记录下来，并不是为了制造更多噪音。
+
+真正有价值的分享，往往来自一次认真整理：把情绪沉淀，把线索串起来，把那些原本会被遗忘的瞬间，重新排成别人愿意读下去的样子。
+
+一张好的文字卡片，不只是“截图更好看”。
+
+它让信息有呼吸感，让重点有层次，也让转发这件事变得更克制、更体面。`;
+
+      const themes = {
+        light: {
+          label: "白霜",
+          background(ctx, width, height) {
+            ctx.fillStyle = "#FAFAFA";
+            ctx.fillRect(0, 0, width, height);
+          },
+          ink: "#1a1a1a",
+          title: "#000000",
+          accent: "#000000",
+          card: "#FAFAFA",
+          cardStroke: "rgba(0, 0, 0, 0.15)",
+          meta: "#999999",
+          qrBg: "#FFFFFF",
+        },
+        dark: {
+          label: "暗夜",
+          background(ctx, width, height) {
+            ctx.fillStyle = "#0A0A0A";
+            ctx.fillRect(0, 0, width, height);
+          },
+          ink: "#EAEAEA",
+          title: "#FFFFFF",
+          accent: "#FFFFFF",
+          card: "#0A0A0A",
+          cardStroke: "rgba(255, 255, 255, 0.2)",
+          meta: "#888888",
+          qrBg: "#1A1A1A",
+        },
+        warm: {
+          label: "暖沙",
+          background(ctx, width, height) {
+            ctx.fillStyle = "#F5F1E8";
+            ctx.fillRect(0, 0, width, height);
+
+            // Subtle paper grain
+            ctx.fillStyle = "rgba(0,0,0,0.015)";
+            for (let i = 0; i < width; i += 4) {
+              for (let j = 0; j < height; j += 4) {
+                if (Math.random() > 0.5) ctx.fillRect(i, j, 2, 2);
+              }
+            }
+          },
+          ink: "#2a2822",
+          title: "#1A1814",
+          accent: "#8B3A2B",
+          card: "#F5F1E8",
+          cardStroke: "rgba(0, 0, 0, 0.12)",
+          meta: "#7A756D",
+          qrBg: "#F5F1E8",
+        },
+        ocean: {
+          label: "海蓝",
+          background(ctx, width, height) {
+            ctx.fillStyle = "#E8F4F8";
+            ctx.fillRect(0, 0, width, height);
+          },
+          ink: "#1a3a4a",
+          title: "#0d2838",
+          accent: "#2563eb",
+          card: "#E8F4F8",
+          cardStroke: "rgba(37, 99, 235, 0.2)",
+          meta: "#64748b",
+          qrBg: "#E8F4F8",
+        },
+        forest: {
+          label: "森林",
+          background(ctx, width, height) {
+            ctx.fillStyle = "#F0F4F0";
+            ctx.fillRect(0, 0, width, height);
+          },
+          ink: "#1e3a1e",
+          title: "#0f2a0f",
+          accent: "#16a34a",
+          card: "#F0F4F0",
+          cardStroke: "rgba(22, 163, 74, 0.2)",
+          meta: "#6b7c6b",
+          qrBg: "#F0F4F0",
+        },
+        sunset: {
+          label: "暮色",
+          background(ctx, width, height) {
+            ctx.fillStyle = "#FFF5F0";
+            ctx.fillRect(0, 0, width, height);
+          },
+          ink: "#4a2a1a",
+          title: "#3a1a0a",
+          accent: "#ea580c",
+          card: "#FFF5F0",
+          cardStroke: "rgba(234, 88, 12, 0.2)",
+          meta: "#92664f",
+          qrBg: "#FFF5F0",
+        },
+        lavender: {
+          label: "薰衣草",
+          background(ctx, width, height) {
+            ctx.fillStyle = "#F5F3FF";
+            ctx.fillRect(0, 0, width, height);
+          },
+          ink: "#3a2a4a",
+          title: "#2a1a3a",
+          accent: "#8b5cf6",
+          card: "#F5F3FF",
+          cardStroke: "rgba(139, 92, 246, 0.2)",
+          meta: "#7c6b8f",
+          qrBg: "#F5F3FF",
+        },
+        ink: {
+          label: "墨色",
+          background(ctx, width, height) {
+            ctx.fillStyle = "#1a1a1a";
+            ctx.fillRect(0, 0, width, height);
+          },
+          ink: "#d4d4d4",
+          title: "#f5f5f5",
+          accent: "#a3a3a3",
+          card: "#1a1a1a",
+          cardStroke: "rgba(163, 163, 163, 0.3)",
+          meta: "#737373",
+          qrBg: "#1a1a1a",
+        },
+      };
+
+      const sizes = {
+        portrait: { width: 1200, height: 1500, label: "4:5" },
+        square: { width: 1200, height: 1200, label: "1:1" },
+        story: { width: 1080, height: 1920, label: "9:16" },
+      };
+
+      const fonts = {
+        serif: {
+          label: "思源宋体",
+          family: "'Noto Serif SC', serif"
+        },
+        sans: {
+          label: "思源黑体",
+          family: "'Noto Sans SC', sans-serif"
+        },
+        system: {
+          label: "系统默认",
+          family: "system-ui, -apple-system, sans-serif"
+        },
+      };
+
+      const contentInput = document.getElementById("contentInput");
+      const linkInput = document.getElementById("linkInput");
+      let currentTheme = "light";
+      let currentSize = "portrait";
+      let currentFont = "serif";
+
+      let qrious = null;
+
+      const themeSelectGroup = document.getElementById("themeSelectGroup");
+      const fontSelectGroup = document.getElementById("fontSelectGroup");
+      const sizeSelectGroup = document.getElementById("sizeSelectGroup");
+
+      // Dynamically render theme buttons
+      themeSelectGroup.innerHTML = "";
+      Object.entries(themes).forEach(([key, theme]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "select-btn";
+        btn.dataset.value = key;
+        btn.textContent = theme.label;
+        if (key === currentTheme) {
+          btn.classList.add("active");
+        }
+        themeSelectGroup.appendChild(btn);
+      });
+
+      themeSelectGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('.select-btn');
+        if (!btn) return;
+        themeSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTheme = btn.dataset.value;
+        drawCard();
+      });
+
+      // Dynamically render font buttons
+      fontSelectGroup.innerHTML = "";
+      Object.entries(fonts).forEach(([key, font]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "select-btn";
+        btn.dataset.value = key;
+        btn.textContent = font.label;
+        if (key === currentFont) {
+          btn.classList.add("active");
+        }
+        fontSelectGroup.appendChild(btn);
+      });
+
+      fontSelectGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('.select-btn');
+        if (!btn) return;
+        fontSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFont = btn.dataset.value;
+        drawCard();
+      });
+
+      // Dynamically render size buttons
+      sizeSelectGroup.innerHTML = "";
+      Object.entries(sizes).forEach(([key, size]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "select-btn";
+        btn.dataset.value = key;
+        btn.textContent = size.label;
+        if (key === currentSize) {
+          btn.classList.add("active");
+        }
+        sizeSelectGroup.appendChild(btn);
+      });
+
+      sizeSelectGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('.select-btn');
+        if (!btn) return;
+        sizeSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentSize = btn.dataset.value;
+        drawCard();
+      });
+      
+
+      const sampleButton = document.getElementById("sampleButton");
+      const clearButton = document.getElementById("clearButton");
+      const downloadButton = document.getElementById("downloadButton");
+      const cardCanvas = document.getElementById("cardCanvas");
+      const qrCanvas = document.getElementById("qrCanvas");
+      const statusText = document.getElementById("statusText");
+
+      const dimensionLabel = document.getElementById("dimensionLabel");
+      
+
+
+      function bootQr() {
+        if (!window.QRious) {
+          statusText.textContent = "二维码库加载失败，当前只能导出纯文字卡片。";
+          return;
+        }
+        qrious = new QRious({
+          element: qrCanvas,
+          size: 280,
+          value: "",
+          background: "white",
+          foreground: "black",
+          level: "M",
+        });
+      }
+
+      function normalizeText(input) {
+        return input.replace(/\r\n/g, "\n").replace(/\u00a0/g, " ").trim();
+      }
+
+      function parseContent(text) {
+        const normalized = normalizeText(text);
+        const blocks = normalized
+          ? normalized
+              .split(/\n\s*\n+/)
+              .map((block) => block.replace(/\n+/g, " ").replace(/\s+/g, " ").trim())
+              .filter(Boolean)
+          : [];
+
+        // No title extraction - treat all content as body paragraphs
+        return { title: "", paragraphs: blocks, normalized };
+      }
+
+      function isValidUrl(value) {
+        if (!value) return false;
+        try {
+          const url = new URL(value);
+          return /^https?:$/.test(url.protocol);
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function wrapText(context, text, maxWidth) {
+        const lines = [];
+        let current = "";
+        const avoidStartChars = ['，', '。', '、', '；', '：', '？', '！', '”', '’', '》', '】', '）', ',', '.', '?', '!', '"', '\'', '>', ']', ')'];
+
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const testLine = current + char;
+          
+          if (context.measureText(testLine).width > maxWidth && current) {
+            // Check if current char is a punctuation that shouldn't start a line
+            if (avoidStartChars.includes(char)) {
+               // Push the char to current line anyway, let it overflow slightly
+               current += char;
+               continue;
+            } else {
+              lines.push(current);
+              current = char.trimStart();
+            }
+          } else {
+            current = testLine;
+          }
+        }
+
+        if (current) {
+          lines.push(current);
+        }
+
+        return lines.length ? lines : [""];
+      }
+
+      function truncateLine(context, text, maxWidth) {
+        if (context.measureText(text).width <= maxWidth) return text;
+        let result = text;
+        while (result.length > 1 && context.measureText(result + "…").width > maxWidth) {
+          result = result.slice(0, -1);
+        }
+        return result + "…";
+      }
+
+      function roundedRect(context, x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2);
+        context.beginPath();
+        context.moveTo(x + r, y);
+        context.arcTo(x + width, y, x + width, y + height, r);
+        context.arcTo(x + width, y + height, x, y + height, r);
+        context.arcTo(x, y + height, x, y, r);
+        context.arcTo(x, y, x + width, y, r);
+        context.closePath();
+      }
+
+      function setupCanvas(canvas, width, height) {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        canvas.style.width = "100%";
+        canvas.style.height = "auto";
+        const ctx = canvas.getContext("2d");
+        ctx.scale(dpr, dpr);
+        return ctx;
+      }
+
+      function domainLabel(link) {
+        if (!isValidUrl(link)) return "";
+        try {
+          const url = new URL(link);
+          return url.hostname.replace(/^www\./, "");
+        } catch (error) {
+          return "";
+        }
+      }
+
+      function getLayout(type, qrEnabled) {
+        const base = {
+          portrait: {
+            paddingX: 92,
+            paddingTop: 104,
+            paddingBottom: 84,
+            titleSize: 74,
+            bodySize: 34,
+            tagSize: 20,
+            quoteSize: 180,
+            qrSize: 208,
+          },
+          square: {
+            paddingX: 92,
+            paddingTop: 96,
+            paddingBottom: 72,
+            titleSize: 66,
+            bodySize: 32,
+            tagSize: 18,
+            quoteSize: 158,
+            qrSize: 188,
+          },
+          story: {
+            paddingX: 92,
+            paddingTop: 116,
+            paddingBottom: 108,
+            titleSize: 78,
+            bodySize: 35,
+            tagSize: 18,
+            quoteSize: 198,
+            qrSize: 216,
+          },
+        }[type];
+
+        return {
+          ...base,
+          textMaxWidth: qrEnabled ? 680 : 830,
+          textBottomReserve: qrEnabled ? base.qrSize + 178 : 160,
+        };
+      }
+
+      function drawCard() {
+        const selectedSize = sizes[currentSize];
+        const selectedTheme = themes[currentTheme];
+        const text = contentInput.value;
+        const link = linkInput.value.trim();
+        const { title, paragraphs, normalized } = parseContent(text);
+        const hasQr = !!(qrious && isValidUrl(link));
+        const width = selectedSize.width;
+        const height = selectedSize.height;
+
+        const ctx = setupCanvas(cardCanvas, width, height);
+        dimensionLabel.textContent = width + " × " + height;
+        statusText.textContent = isValidUrl(link) || !link ? "" : "链接格式不正确，二维码已自动关闭。";
+
+        if (hasQr) {
+          qrious.value = link;
+          qrious.size = 280;
+        }
+        
+        // 1. Base Background
+        selectedTheme.background(ctx, width, height);
+
+        // 2. Card Panel
+        // Minimal border-only design with reduced margins
+        const marginX = width * 0.04;
+        const marginY = height * 0.04;
+        const cardX = marginX;
+        const cardY = marginY;
+        const cardWidth = width - (marginX * 2);
+        const cardHeight = height - (marginY * 2);
+
+        ctx.save();
+        // Only draw border, no fill
+        roundedRect(ctx, cardX, cardY, cardWidth, cardHeight, 2);
+        ctx.strokeStyle = selectedTheme.cardStroke;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        // 3. Layout Metrics
+        // Balanced padding with larger text
+        const padX = cardWidth * 0.10;
+        const padTop = cardHeight * 0.10;
+        const padBot = cardHeight * 0.10;
+
+        const qrAreaHeight = hasQr ? 160 : 0;
+        const contentBottomLimit = cardY + cardHeight - padBot - qrAreaHeight - 40;
+        const textMaxWidth = cardWidth - (padX * 2);
+        const textX = cardX + padX;
+        const textY = cardY + padTop;
+
+        // Larger base size for better readability
+        let bodySize = 46;
+
+        // Typography settings using selected font
+        const selectedFont = fonts[currentFont];
+        const fontBody = `400 ${bodySize}px ${selectedFont.family}`;
+
+        // 4. Calculate heights and fit
+        let bodyBlocks = [];
+
+        for (let i = 0; i < 9; i += 1) {
+          ctx.font = `400 ${bodySize}px ${selectedFont.family}`;
+          // Dynamic line height based on font size (Apple-style)
+          let lineHeightRatio;
+          if (bodySize > 40) {
+            lineHeightRatio = 1.65; // Larger text needs less relative spacing
+          } else if (bodySize > 35) {
+            lineHeightRatio = 1.75;
+          } else {
+            lineHeightRatio = 1.85;
+          }
+          const lineHeight = bodySize * lineHeightRatio;
+
+          bodyBlocks = paragraphs.map((paragraph) => ({
+            lines: wrapText(ctx, paragraph, textMaxWidth),
+            lineHeight,
+          }));
+          const bodyHeight = bodyBlocks.reduce((sum, block) => sum + block.lines.length * block.lineHeight + bodySize * 0.7, 0);
+
+          if (textY + bodyHeight <= contentBottomLimit || bodySize <= 32) break;
+          bodySize -= 1.5;
+        }
+
+        ctx.textBaseline = "top";
+        let cursorY = textY;
+
+        // Draw Body
+        ctx.font = `400 ${bodySize}px ${selectedFont.family}`;
+        // Letter spacing for better readability (Apple-style)
+        if (ctx.letterSpacing !== undefined) {
+          ctx.letterSpacing = '0.5px';
+        }
+        // Use softer colors (Apple-style)
+        ctx.fillStyle = selectedTheme.ink;
+
+        if (!paragraphs.length) {
+          ctx.fillStyle = selectedTheme.meta;
+          ctx.fillText("请输入文字...", textX, cursorY);
+        }
+
+        let roomRanOut = false;
+        for (let blockIndex = 0; blockIndex < bodyBlocks.length; blockIndex += 1) {
+          const block = bodyBlocks[blockIndex];
+          for (let lineIndex = 0; lineIndex < block.lines.length; lineIndex += 1) {
+            const remaining = contentBottomLimit - cursorY;
+            if (remaining < block.lineHeight) {
+              roomRanOut = true;
+              break;
+            }
+            let line = block.lines[lineIndex];
+            if (remaining < block.lineHeight * 1.5 && lineIndex < block.lines.length - 1) {
+              line = truncateLine(ctx, line, textMaxWidth);
+              roomRanOut = true;
+              ctx.fillText(line, textX, cursorY);
+              cursorY += block.lineHeight;
+              break;
+            }
+            ctx.fillText(line, textX, cursorY);
+            cursorY += block.lineHeight;
+          }
+          if (roomRanOut) break;
+          cursorY += bodySize * 1.2; // More generous paragraph spacing (reference style)
+        }
+
+
+
+        // 5. Footer (QR Code only)
+        if (hasQr) {
+          const footerY = cardY + cardHeight - padBot;
+
+          const qrSize = 100;
+          const qrX = cardX + cardWidth - padX - qrSize;
+          const qrY = footerY - qrSize - 24;
+
+          // Draw QR code only
+          ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+        }
+      }
+
+      function downloadImage() {
+        const safeName = "share-card-" + Date.now() + ".png";
+        const link = document.createElement("a");
+        link.download = safeName;
+        link.href = cardCanvas.toDataURL("image/png");
+        link.click();
+      }
+
+      function fillSample() {
+        contentInput.value = sampleText;
+        linkInput.value = "https://github.com/";
+
+
+        themeSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+        themeSelectGroup.querySelector('[data-value="light"]').classList.add('active');
+        currentTheme = "light";
+
+        fontSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+        fontSelectGroup.querySelector('[data-value="serif"]').classList.add('active');
+        currentFont = "serif";
+
+        sizeSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+        sizeSelectGroup.querySelector('[data-value="portrait"]').classList.add('active');
+        currentSize = "portrait";
+
+        drawCard();
+      }
+
+      function clearAll() {
+        contentInput.value = "";
+        linkInput.value = "";
+        drawCard();
+      }
+
+      function bindRealtimeRefresh() {
+        [contentInput, linkInput].forEach((element) => {
+          element.addEventListener("input", drawCard);
+          element.addEventListener("change", drawCard);
+        });
+      }
+
+      sampleButton.addEventListener("click", fillSample);
+      clearButton.addEventListener("click", clearAll);
+      downloadButton.addEventListener("click", downloadImage);
+      bindRealtimeRefresh();
+      bootQr();
+
+      // Immediate draw to prevent blank screen
+      fillSample();
+
+      // Redraw when fonts are ready for high-fidelity rendering
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready
+          .then(() => {
+            drawCard();
+          })
+          .catch(() => {
+            drawCard();
+          });
+      }
+    </script>
+  </body>
+</html>
