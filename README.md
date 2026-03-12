@@ -15,7 +15,7 @@
 
 ## 🎯 在线使用
 
-访问 GitHub Pages：[https://你的用户名.github.io/text-card-maker/](https://你的用户名.github.io/text-card-maker/)
+访问 GitHub Pages：[https://walnut-a.github.io/text-card-maker/](https://walnut-a.github.io/text-card-maker/)
 
 ## 📦 本地使用
 
@@ -74,4 +74,4 @@ MIT License
 
 ---
 
-Made with ♥ by [你的名字]
+Made with ♥ by walnut-a
