@@ -800,16 +800,16 @@
         const frameY = frameMargin;
         const frameWidth = width - (frameMargin * 2);
 
-        const contentPadX = frameWidth * 0.11;
-        const contentPadTop = frameWidth * 0.06;
-        const contentPadBot = frameWidth * 0.06;
+        const contentPadX = frameWidth * 0.08; // 减小左右边距
+        const contentPadTop = frameWidth * 0.055; // 调整上边距
+        const contentPadBot = frameWidth * 0.05; // 调整下边距
 
         const contentX = frameX + contentPadX;
         const contentY = frameY + contentPadTop;
         const contentWidth = frameWidth - (contentPadX * 2);
 
         // Footer dimensions
-        const footerHeight = hasQr ? 180 : 0;
+        const footerHeight = hasQr ? 220 : 0;
         const footerWithPadding = footerHeight > 0 ? footerHeight + 35 : 0;
 
         // Create temporary canvas for text measurement
@@ -933,7 +933,7 @@
           ctx.stroke();
 
           // QR code
-          const qrSize = 100;
+          const qrSize = 120;
           const qrX = contentX + contentWidth - qrSize;
           const qrY = footerY;
 
