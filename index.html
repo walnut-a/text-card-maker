@@ -847,59 +847,87 @@
           qrious.value = link;
           qrious.size = 280;
         }
-        
+
         // 1. Base Background
         selectedTheme.background(ctx, width, height);
 
-        // 2. Card Panel
-        // Minimal border-only design with reduced margins
-        const marginX = width * 0.04;
-        const marginY = height * 0.04;
-        const cardX = marginX;
-        const cardY = marginY;
-        const cardWidth = width - (marginX * 2);
-        const cardHeight = height - (marginY * 2);
+        // 2. Card Frame (inspired by demo)
+        const frameMargin = width * 0.01; // Outer margin
+        const frameX = frameMargin;
+        const frameY = frameMargin;
+        const frameWidth = width - (frameMargin * 2);
+        const frameHeight = height - (frameMargin * 2);
 
+        // Draw main frame border
         ctx.save();
-        // Only draw border, no fill
-        roundedRect(ctx, cardX, cardY, cardWidth, cardHeight, 2);
         ctx.strokeStyle = selectedTheme.cardStroke;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(frameX, frameY, frameWidth, frameHeight);
+
+        // Draw corner decorations (inspired by demo)
+        const cornerSize = 8;
+        const cornerOffset = 3;
+        ctx.lineWidth = 0.8;
+
+        // Top-left corner
+        ctx.beginPath();
+        ctx.moveTo(frameX - cornerOffset, frameY + cornerSize);
+        ctx.lineTo(frameX - cornerOffset, frameY - cornerOffset);
+        ctx.lineTo(frameX + cornerSize, frameY - cornerOffset);
         ctx.stroke();
+
+        // Top-right corner
+        ctx.beginPath();
+        ctx.moveTo(frameX + frameWidth - cornerSize, frameY - cornerOffset);
+        ctx.lineTo(frameX + frameWidth + cornerOffset, frameY - cornerOffset);
+        ctx.lineTo(frameX + frameWidth + cornerOffset, frameY + cornerSize);
+        ctx.stroke();
+
+        // Bottom-left corner
+        ctx.beginPath();
+        ctx.moveTo(frameX - cornerOffset, frameY + frameHeight - cornerSize);
+        ctx.lineTo(frameX - cornerOffset, frameY + frameHeight + cornerOffset);
+        ctx.lineTo(frameX + cornerSize, frameY + frameHeight + cornerOffset);
+        ctx.stroke();
+
+        // Bottom-right corner
+        ctx.beginPath();
+        ctx.moveTo(frameX + frameWidth - cornerSize, frameY + frameHeight + cornerOffset);
+        ctx.lineTo(frameX + frameWidth + cornerOffset, frameY + frameHeight + cornerOffset);
+        ctx.lineTo(frameX + frameWidth + cornerOffset, frameY + frameHeight - cornerSize);
+        ctx.stroke();
+
         ctx.restore();
 
-        // 3. Layout Metrics
-        // Balanced padding with larger text
-        const padX = cardWidth * 0.10;
-        const padTop = cardHeight * 0.10;
-        const padBot = cardHeight * 0.10;
+        // 3. Content Area
+        const contentPadX = frameWidth * 0.08;
+        const contentPadTop = frameHeight * 0.12;
+        const contentPadBot = frameHeight * 0.10;
 
-        const qrAreaHeight = hasQr ? 160 : 0;
-        const contentBottomLimit = cardY + cardHeight - padBot - qrAreaHeight - 40;
-        const textMaxWidth = cardWidth - (padX * 2);
-        const textX = cardX + padX;
-        const textY = cardY + padTop;
+        const contentX = frameX + contentPadX;
+        const contentY = frameY + contentPadTop;
+        const contentWidth = frameWidth - (contentPadX * 2);
 
-        // Larger base size for better readability
+        // 4. Footer area (if has QR)
+        const footerHeight = hasQr ? 100 : 0;
+        const contentBottomLimit = frameY + frameHeight - contentPadBot - footerHeight;
+
+        // 5. Calculate text size
         let bodySize = 46;
-
-        // Typography settings using selected font
-        const selectedFont = fonts[currentFont];
-        const fontBody = `400 ${bodySize}px ${selectedFont.family}`;
-
-        // 4. Calculate heights and fit
         let bodyBlocks = [];
+        const textMaxWidth = contentWidth;
+
+        const selectedFont = fonts[currentFont];
 
         for (let i = 0; i < 9; i += 1) {
           ctx.font = `400 ${bodySize}px ${selectedFont.family}`;
-          // Dynamic line height based on font size (Apple-style)
           let lineHeightRatio;
           if (bodySize > 40) {
-            lineHeightRatio = 1.65; // Larger text needs less relative spacing
+            lineHeightRatio = 1.7;
           } else if (bodySize > 35) {
-            lineHeightRatio = 1.75;
+            lineHeightRatio = 1.8;
           } else {
-            lineHeightRatio = 1.85;
+            lineHeightRatio = 1.9;
           }
           const lineHeight = bodySize * lineHeightRatio;
 
@@ -907,27 +935,30 @@
             lines: wrapText(ctx, paragraph, textMaxWidth),
             lineHeight,
           }));
-          const bodyHeight = bodyBlocks.reduce((sum, block) => sum + block.lines.length * block.lineHeight + bodySize * 0.7, 0);
+          const bodyHeight = bodyBlocks.reduce((sum, block) => sum + block.lines.length * block.lineHeight + bodySize * 0.8, 0);
 
-          if (textY + bodyHeight <= contentBottomLimit || bodySize <= 32) break;
+          if (contentY + bodyHeight <= contentBottomLimit || bodySize <= 32) break;
           bodySize -= 1.5;
         }
 
+        // 6. Draw text content (centered vertically in available space)
         ctx.textBaseline = "top";
-        let cursorY = textY;
-
-        // Draw Body
         ctx.font = `400 ${bodySize}px ${selectedFont.family}`;
-        // Letter spacing for better readability (Apple-style)
         if (ctx.letterSpacing !== undefined) {
           ctx.letterSpacing = '0.5px';
         }
-        // Use softer colors (Apple-style)
         ctx.fillStyle = selectedTheme.ink;
+
+        // Calculate total content height for vertical centering
+        const totalContentHeight = bodyBlocks.reduce((sum, block) =>
+          sum + block.lines.length * block.lineHeight + bodySize * 0.8, 0) - bodySize * 0.8;
+
+        const availableHeight = contentBottomLimit - contentY;
+        let cursorY = contentY + (availableHeight - totalContentHeight) / 2;
 
         if (!paragraphs.length) {
           ctx.fillStyle = selectedTheme.meta;
-          ctx.fillText("请输入文字...", textX, cursorY);
+          ctx.fillText("请输入文字...", contentX, contentY + availableHeight / 2);
         }
 
         let roomRanOut = false;
@@ -943,30 +974,54 @@
             if (remaining < block.lineHeight * 1.5 && lineIndex < block.lines.length - 1) {
               line = truncateLine(ctx, line, textMaxWidth);
               roomRanOut = true;
-              ctx.fillText(line, textX, cursorY);
+              ctx.fillText(line, contentX, cursorY);
               cursorY += block.lineHeight;
               break;
             }
-            ctx.fillText(line, textX, cursorY);
+            ctx.fillText(line, contentX, cursorY);
             cursorY += block.lineHeight;
           }
           if (roomRanOut) break;
-          cursorY += bodySize * 1.2; // More generous paragraph spacing (reference style)
+          cursorY += bodySize * 0.8;
         }
 
-
-
-        // 5. Footer (QR Code only)
+        // 7. Footer with QR code (inspired by demo)
         if (hasQr) {
-          const footerY = cardY + cardHeight - padBot;
+          const footerY = frameY + frameHeight - contentPadBot - footerHeight + 20;
 
-          const qrSize = 100;
-          const qrX = cardX + cardWidth - padX - qrSize;
-          const qrY = footerY - qrSize - 24;
+          // Draw divider line (gradient)
+          const dividerY = footerY - 20;
+          const gradient = ctx.createLinearGradient(contentX, dividerY, contentX + contentWidth, dividerY);
+          gradient.addColorStop(0, 'rgba(17, 17, 17, 0)');
+          gradient.addColorStop(0.5, selectedTheme.cardStroke);
+          gradient.addColorStop(1, 'rgba(17, 17, 17, 0)');
 
-          // Draw QR code only
+          ctx.strokeStyle = gradient;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(contentX, dividerY);
+          ctx.lineTo(contentX + contentWidth, dividerY);
+          ctx.stroke();
+
+          // QR code (smaller, more elegant)
+          const qrSize = 60;
+          const qrX = contentX + contentWidth - qrSize;
+          const qrY = footerY;
+
+          // QR border
+          ctx.strokeStyle = selectedTheme.cardStroke;
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(qrX - 2, qrY - 2, qrSize + 4, qrSize + 4);
+
           ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+
+          // Scan text
+          ctx.fillStyle = selectedTheme.meta;
+          ctx.font = `11px ${selectedFont.family}`;
+          ctx.textAlign = "left";
+          ctx.fillText("扫码查看", contentX, footerY + 20);
         }
+      }
       }
 
       function downloadImage() {
