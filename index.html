@@ -297,8 +297,19 @@
       .status { color: #e11d48; margin-top: 16px; font-size: 13px; }
       .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;}
 
+      .mobile-download-btn {
+        display: none;
+        width: 100%;
+        max-width: 540px;
+        margin-top: 16px;
+      }
+
       /* 移动端增强适配 (Mobile Responsive Enhancements) */
       @media (max-width: 960px) {
+        .mobile-download-btn {
+          display: block;
+        }
+
         .app {
           padding: 24px 16px 64px;
         }
@@ -408,6 +419,8 @@
           <div class="canvas-shell">
             <canvas id="cardCanvas" width="1200" height="1500"></canvas>
           </div>
+
+          <button id="mobileDownloadButton" class="mobile-download-btn">下载图片</button>
 
           <p class="status" id="statusText"></p>
           <canvas id="qrCanvas" class="sr-only" width="280" height="280" aria-hidden="true"></canvas>
@@ -628,6 +641,7 @@
       const sampleButton = document.getElementById("sampleButton");
       const clearButton = document.getElementById("clearButton");
       const downloadButton = document.getElementById("downloadButton");
+      const mobileDownloadButton = document.getElementById("mobileDownloadButton");
       const cardCanvas = document.getElementById("cardCanvas");
       const qrCanvas = document.getElementById("qrCanvas");
       const statusText = document.getElementById("statusText");
@@ -976,6 +990,7 @@
       sampleButton.addEventListener("click", fillSample);
       clearButton.addEventListener("click", clearAll);
       downloadButton.addEventListener("click", downloadImage);
+      mobileDownloadButton.addEventListener("click", downloadImage);
       bindRealtimeRefresh();
       bootQr();
 
