@@ -381,12 +381,6 @@
                 <!-- Dynamically rendered by JS -->
               </div>
             </div>
-            <div class="field">
-              <label>图片比例</label>
-              <div class="custom-select-group" id="sizeSelectGroup">
-                <!-- Dynamically rendered by JS -->
-              </div>
-            </div>
           </div>
 
           <div class="actions">
@@ -417,6 +411,8 @@
 
           <p class="status" id="statusText"></p>
           <canvas id="qrCanvas" class="sr-only" width="280" height="280" aria-hidden="true"></canvas>
+          <span class="sr-only" style="font-family: 'Noto Serif SC', serif;">字体预加载</span>
+          <span class="sr-only" style="font-family: 'Noto Sans SC', sans-serif;">字体预加载</span>
         </section>
       </section>
     </main>
@@ -553,12 +549,6 @@
         },
       };
 
-      const sizes = {
-        portrait: { width: 1200, height: 1500, label: "4:5" },
-        square: { width: 1200, height: 1200, label: "1:1" },
-        story: { width: 1080, height: 1920, label: "9:16" },
-      };
-
       const fonts = {
         serif: {
           label: "思源宋体",
@@ -577,14 +567,17 @@
       const contentInput = document.getElementById("contentInput");
       const linkInput = document.getElementById("linkInput");
       let currentTheme = "light";
-      let currentSize = "portrait";
-      let currentFont = "serif";
+      let currentFont = "system"; // Default to system font
+
+      // Fixed dimensions
+      const CARD_WIDTH = 900;
+      const MAX_CARD_HEIGHT = 2400; // Maximum height before truncation
+      const FIXED_FONT_SIZE = 48;
 
       let qrious = null;
 
       const themeSelectGroup = document.getElementById("themeSelectGroup");
       const fontSelectGroup = document.getElementById("fontSelectGroup");
-      const sizeSelectGroup = document.getElementById("sizeSelectGroup");
 
       // Dynamically render theme buttons
       themeSelectGroup.innerHTML = "";
@@ -631,30 +624,6 @@
         currentFont = btn.dataset.value;
         drawCard();
       });
-
-      // Dynamically render size buttons
-      sizeSelectGroup.innerHTML = "";
-      Object.entries(sizes).forEach(([key, size]) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "select-btn";
-        btn.dataset.value = key;
-        btn.textContent = size.label;
-        if (key === currentSize) {
-          btn.classList.add("active");
-        }
-        sizeSelectGroup.appendChild(btn);
-      });
-
-      sizeSelectGroup.addEventListener('click', (e) => {
-        const btn = e.target.closest('.select-btn');
-        if (!btn) return;
-        sizeSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentSize = btn.dataset.value;
-        drawCard();
-      });
-      
 
       const sampleButton = document.getElementById("sampleButton");
       const clearButton = document.getElementById("clearButton");
@@ -788,177 +757,114 @@
         }
       }
 
-      function getLayout(type, qrEnabled) {
-        const base = {
-          portrait: {
-            paddingX: 92,
-            paddingTop: 104,
-            paddingBottom: 84,
-            titleSize: 74,
-            bodySize: 34,
-            tagSize: 20,
-            quoteSize: 180,
-            qrSize: 208,
-          },
-          square: {
-            paddingX: 92,
-            paddingTop: 96,
-            paddingBottom: 72,
-            titleSize: 66,
-            bodySize: 32,
-            tagSize: 18,
-            quoteSize: 158,
-            qrSize: 188,
-          },
-          story: {
-            paddingX: 92,
-            paddingTop: 116,
-            paddingBottom: 108,
-            titleSize: 78,
-            bodySize: 35,
-            tagSize: 18,
-            quoteSize: 198,
-            qrSize: 216,
-          },
-        }[type];
-
-        return {
-          ...base,
-          textMaxWidth: qrEnabled ? 680 : 830,
-          textBottomReserve: qrEnabled ? base.qrSize + 178 : 160,
-        };
-      }
-
       function drawCard() {
-        const selectedSize = sizes[currentSize];
         const selectedTheme = themes[currentTheme];
+        const selectedFont = fonts[currentFont];
         const text = contentInput.value;
         const link = linkInput.value.trim();
         const { title, paragraphs, normalized } = parseContent(text);
         const hasQr = !!(qrious && isValidUrl(link));
-        const width = selectedSize.width;
-        const height = selectedSize.height;
 
-        const ctx = setupCanvas(cardCanvas, width, height);
-        dimensionLabel.textContent = width + " × " + height;
         statusText.textContent = isValidUrl(link) || !link ? "" : "链接格式不正确，二维码已自动关闭。";
 
         if (hasQr) {
           qrious.value = link;
           qrious.size = 280;
+          qrious.foreground = selectedTheme.ink;
+          qrious.background = selectedTheme.card;
         }
 
-        // 1. Base Background
-        selectedTheme.background(ctx, width, height);
+        // Fixed dimensions
+        const width = CARD_WIDTH;
+        const bodySize = FIXED_FONT_SIZE;
+        const lineHeightRatio = 1.7;
+        const lineHeight = bodySize * lineHeightRatio;
 
-        // 2. Card Frame (inspired by demo)
-        const frameMargin = width * 0.01; // Outer margin
+        // Frame and content dimensions
+        const frameMargin = width * 0.02;
         const frameX = frameMargin;
         const frameY = frameMargin;
         const frameWidth = width - (frameMargin * 2);
-        const frameHeight = height - (frameMargin * 2);
 
-        // Draw main frame border
-        ctx.save();
-        ctx.strokeStyle = selectedTheme.cardStroke;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(frameX, frameY, frameWidth, frameHeight);
-
-        // Draw corner decorations (inspired by demo)
-        const cornerSize = 8;
-        const cornerOffset = 3;
-        ctx.lineWidth = 0.8;
-
-        // Top-left corner
-        ctx.beginPath();
-        ctx.moveTo(frameX - cornerOffset, frameY + cornerSize);
-        ctx.lineTo(frameX - cornerOffset, frameY - cornerOffset);
-        ctx.lineTo(frameX + cornerSize, frameY - cornerOffset);
-        ctx.stroke();
-
-        // Top-right corner
-        ctx.beginPath();
-        ctx.moveTo(frameX + frameWidth - cornerSize, frameY - cornerOffset);
-        ctx.lineTo(frameX + frameWidth + cornerOffset, frameY - cornerOffset);
-        ctx.lineTo(frameX + frameWidth + cornerOffset, frameY + cornerSize);
-        ctx.stroke();
-
-        // Bottom-left corner
-        ctx.beginPath();
-        ctx.moveTo(frameX - cornerOffset, frameY + frameHeight - cornerSize);
-        ctx.lineTo(frameX - cornerOffset, frameY + frameHeight + cornerOffset);
-        ctx.lineTo(frameX + cornerSize, frameY + frameHeight + cornerOffset);
-        ctx.stroke();
-
-        // Bottom-right corner
-        ctx.beginPath();
-        ctx.moveTo(frameX + frameWidth - cornerSize, frameY + frameHeight + cornerOffset);
-        ctx.lineTo(frameX + frameWidth + cornerOffset, frameY + frameHeight + cornerOffset);
-        ctx.lineTo(frameX + frameWidth + cornerOffset, frameY + frameHeight - cornerSize);
-        ctx.stroke();
-
-        ctx.restore();
-
-        // 3. Content Area
-        const contentPadX = frameWidth * 0.08;
-        const contentPadTop = frameHeight * 0.12;
-        const contentPadBot = frameHeight * 0.10;
+        const contentPadX = frameWidth * 0.11;
+        const contentPadTop = frameWidth * 0.06;
+        const contentPadBot = frameWidth * 0.06;
 
         const contentX = frameX + contentPadX;
         const contentY = frameY + contentPadTop;
         const contentWidth = frameWidth - (contentPadX * 2);
 
-        // 4. Footer area (if has QR)
-        const footerHeight = hasQr ? 100 : 0;
-        const contentBottomLimit = frameY + frameHeight - contentPadBot - footerHeight;
+        // Footer dimensions
+        const footerHeight = hasQr ? 180 : 0;
+        const footerWithPadding = footerHeight > 0 ? footerHeight + 35 : 0;
 
-        // 5. Calculate text size
-        let bodySize = 46;
-        let bodyBlocks = [];
-        const textMaxWidth = contentWidth;
+        // Create temporary canvas for text measurement
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.font = `400 ${bodySize}px ${selectedFont.family}`;
 
-        const selectedFont = fonts[currentFont];
+        // Calculate text blocks
+        const bodyBlocks = paragraphs.map((paragraph) => ({
+          lines: wrapText(tempCtx, paragraph, contentWidth),
+          lineHeight,
+        }));
 
-        for (let i = 0; i < 9; i += 1) {
-          ctx.font = `400 ${bodySize}px ${selectedFont.family}`;
-          let lineHeightRatio;
-          if (bodySize > 40) {
-            lineHeightRatio = 1.7;
-          } else if (bodySize > 35) {
-            lineHeightRatio = 1.8;
-          } else {
-            lineHeightRatio = 1.9;
+        // Calculate total content height
+        let contentHeight = bodySize; // Start position offset
+        if (paragraphs.length === 0) {
+          contentHeight += lineHeight; // Space for placeholder text
+        } else {
+          for (let i = 0; i < bodyBlocks.length; i++) {
+            contentHeight += bodyBlocks[i].lines.length * lineHeight;
+            if (i < bodyBlocks.length - 1) {
+              contentHeight += bodySize * 0.8; // Paragraph spacing
+            }
           }
-          const lineHeight = bodySize * lineHeightRatio;
-
-          bodyBlocks = paragraphs.map((paragraph) => ({
-            lines: wrapText(ctx, paragraph, textMaxWidth),
-            lineHeight,
-          }));
-          const bodyHeight = bodyBlocks.reduce((sum, block) => sum + block.lines.length * block.lineHeight + bodySize * 0.8, 0);
-
-          if (contentY + bodyHeight <= contentBottomLimit || bodySize <= 32) break;
-          bodySize -= 1.5;
         }
 
-        // 6. Draw text content (centered vertically in available space)
-        ctx.textBaseline = "top";
+        // Calculate required card height
+        let calculatedHeight = frameMargin * 2 + contentPadTop + contentHeight + contentPadBot + footerWithPadding;
+
+        // Check if truncation is needed
+        let needsTruncation = false;
+        if (calculatedHeight > MAX_CARD_HEIGHT) {
+          needsTruncation = true;
+          calculatedHeight = MAX_CARD_HEIGHT;
+        }
+
+        const height = calculatedHeight;
+        const frameHeight = height - (frameMargin * 2);
+
+        // Setup canvas with calculated dimensions
+        const ctx = setupCanvas(cardCanvas, width, height);
+        dimensionLabel.textContent = width + " × " + Math.round(height);
+
+        // 1. Base Background
+        selectedTheme.background(ctx, width, height);
+
+        // 2. Card Frame
+        ctx.save();
+        ctx.strokeStyle = selectedTheme.cardStroke;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(frameX, frameY, frameWidth, frameHeight);
+        ctx.restore();
+
+        // 3. Calculate content bottom limit
+        const contentBottomLimit = frameY + frameHeight - contentPadBot - footerWithPadding;
+
+        // 4. Draw text content
+        ctx.textBaseline = "alphabetic";
         ctx.font = `400 ${bodySize}px ${selectedFont.family}`;
         if (ctx.letterSpacing !== undefined) {
           ctx.letterSpacing = '0.5px';
         }
         ctx.fillStyle = selectedTheme.ink;
 
-        // Calculate total content height for vertical centering
-        const totalContentHeight = bodyBlocks.reduce((sum, block) =>
-          sum + block.lines.length * block.lineHeight + bodySize * 0.8, 0) - bodySize * 0.8;
-
-        const availableHeight = contentBottomLimit - contentY;
-        let cursorY = contentY + (availableHeight - totalContentHeight) / 2;
+        let cursorY = contentY + bodySize;
 
         if (!paragraphs.length) {
           ctx.fillStyle = selectedTheme.meta;
-          ctx.fillText("请输入文字...", contentX, contentY + availableHeight / 2);
+          ctx.fillText("请输入文字...", contentX, cursorY);
         }
 
         let roomRanOut = false;
@@ -966,62 +872,69 @@
           const block = bodyBlocks[blockIndex];
           for (let lineIndex = 0; lineIndex < block.lines.length; lineIndex += 1) {
             const remaining = contentBottomLimit - cursorY;
-            if (remaining < block.lineHeight) {
+
+            // Not enough space for this line
+            if (remaining < block.lineHeight * 0.5) {
               roomRanOut = true;
               break;
             }
+
             let line = block.lines[lineIndex];
-            if (remaining < block.lineHeight * 1.5 && lineIndex < block.lines.length - 1) {
-              line = truncateLine(ctx, line, textMaxWidth);
-              roomRanOut = true;
+
+            // Check if there's more content after this line
+            const hasMoreLines = lineIndex < block.lines.length - 1;
+            const hasMoreBlocks = blockIndex < bodyBlocks.length - 1;
+            const hasMoreContent = hasMoreLines || hasMoreBlocks;
+
+            // If we're running out of space and there's more content, truncate
+            if (needsTruncation && remaining < block.lineHeight * 1.5 && hasMoreContent) {
+              line = truncateLine(ctx, line, contentWidth);
               ctx.fillText(line, contentX, cursorY);
-              cursorY += block.lineHeight;
+              roomRanOut = true;
               break;
             }
+
             ctx.fillText(line, contentX, cursorY);
             cursorY += block.lineHeight;
           }
           if (roomRanOut) break;
-          cursorY += bodySize * 0.8;
+
+          // Add paragraph spacing
+          if (blockIndex < bodyBlocks.length - 1) {
+            cursorY += bodySize * 0.8;
+          }
         }
 
-        // 7. Footer with QR code (inspired by demo)
+        // 5. Footer with QR code
         if (hasQr) {
-          const footerY = frameY + frameHeight - contentPadBot - footerHeight + 20;
+          const footerY = frameY + frameHeight - contentPadBot - footerHeight + 35;
 
-          // Draw divider line (gradient)
-          const dividerY = footerY - 20;
-          const gradient = ctx.createLinearGradient(contentX, dividerY, contentX + contentWidth, dividerY);
-          gradient.addColorStop(0, 'rgba(17, 17, 17, 0)');
-          gradient.addColorStop(0.5, selectedTheme.cardStroke);
-          gradient.addColorStop(1, 'rgba(17, 17, 17, 0)');
-
-          ctx.strokeStyle = gradient;
-          ctx.lineWidth = 0.5;
+          // Draw divider line
+          const dividerY = footerY - 35;
+          ctx.strokeStyle = selectedTheme.cardStroke;
+          ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(contentX, dividerY);
           ctx.lineTo(contentX + contentWidth, dividerY);
           ctx.stroke();
 
-          // QR code (smaller, more elegant)
-          const qrSize = 60;
+          // QR code
+          const qrSize = 100;
           const qrX = contentX + contentWidth - qrSize;
           const qrY = footerY;
-
-          // QR border
-          ctx.strokeStyle = selectedTheme.cardStroke;
-          ctx.lineWidth = 0.5;
-          ctx.strokeRect(qrX - 2, qrY - 2, qrSize + 4, qrSize + 4);
 
           ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
 
           // Scan text
           ctx.fillStyle = selectedTheme.meta;
-          ctx.font = `11px ${selectedFont.family}`;
-          ctx.textAlign = "left";
-          ctx.fillText("扫码查看", contentX, footerY + 20);
+          ctx.font = `400 22px ${selectedFont.family}`;
+          ctx.textAlign = "right";
+          const textRightEdge = qrX - 20;
+          const textCenterY = footerY + qrSize / 2;
+          ctx.fillText("扫码查看", textRightEdge, textCenterY - 6);
+          ctx.fillText("原文内容", textRightEdge, textCenterY + 22);
+          ctx.textAlign = "left"; // Reset
         }
-      }
       }
 
       function downloadImage() {
@@ -1036,18 +949,13 @@
         contentInput.value = sampleText;
         linkInput.value = "https://github.com/";
 
-
         themeSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
         themeSelectGroup.querySelector('[data-value="light"]').classList.add('active');
         currentTheme = "light";
 
         fontSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
-        fontSelectGroup.querySelector('[data-value="serif"]').classList.add('active');
-        currentFont = "serif";
-
-        sizeSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
-        sizeSelectGroup.querySelector('[data-value="portrait"]').classList.add('active');
-        currentSize = "portrait";
+        fontSelectGroup.querySelector('[data-value="system"]').classList.add('active');
+        currentFont = "system";
 
         drawCard();
       }
@@ -1071,18 +979,21 @@
       bindRealtimeRefresh();
       bootQr();
 
-      // Immediate draw to show empty state
+      // Initial draw
       drawCard();
 
-      // Redraw when fonts are ready for high-fidelity rendering
-      if (document.fonts && document.fonts.ready) {
-        document.fonts.ready
-          .then(() => {
+      // Preload web fonts in background for better performance when switching
+      if (document.fonts && document.fonts.load) {
+        // Preload both fonts with specific weight
+        Promise.all([
+          document.fonts.load("400 54px 'Noto Serif SC'"),
+          document.fonts.load("400 54px 'Noto Sans SC'")
+        ]).then(() => {
+          // Redraw if currently using serif font to fix any rendering issues
+          if (currentFont === 'serif') {
             drawCard();
-          })
-          .catch(() => {
-            drawCard();
-          });
+          }
+        }).catch(() => {});
       }
     </script>
   </body>
