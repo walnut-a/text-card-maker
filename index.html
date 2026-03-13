@@ -291,7 +291,7 @@
         display: block;
         width: 100%;
         height: auto;
-        border-radius: 0;
+        border-radius: 8px;
       }
 
       .status { color: #e11d48; margin-top: 16px; font-size: 13px; }
@@ -853,14 +853,19 @@
         const ctx = setupCanvas(cardCanvas, width, height);
         dimensionLabel.textContent = width + " × " + Math.round(height);
 
-        // 1. Base Background
+        // 1. Base Background with rounded corners
+        ctx.save();
+        roundedRect(ctx, 0, 0, width, height, 8);
+        ctx.clip();
         selectedTheme.background(ctx, width, height);
+        ctx.restore();
 
-        // 2. Card Frame
+        // 2. Card Frame with rounded corners
         ctx.save();
         ctx.strokeStyle = selectedTheme.cardStroke;
         ctx.lineWidth = 1;
-        ctx.strokeRect(frameX, frameY, frameWidth, frameHeight);
+        roundedRect(ctx, frameX, frameY, frameWidth, frameHeight, 8);
+        ctx.stroke();
         ctx.restore();
 
         // 3. Calculate content bottom limit
@@ -941,12 +946,12 @@
 
           // Scan text
           ctx.fillStyle = selectedTheme.meta;
-          ctx.font = `400 22px ${selectedFont.family}`;
+          ctx.font = `400 26px ${selectedFont.family}`;
           ctx.textAlign = "right";
           const textRightEdge = qrX - 20;
           const textCenterY = footerY + qrSize / 2;
-          ctx.fillText("扫码查看", textRightEdge, textCenterY - 6);
-          ctx.fillText("原文内容", textRightEdge, textCenterY + 22);
+          ctx.fillText("扫码查看", textRightEdge, textCenterY - 8);
+          ctx.fillText("原文内容", textRightEdge, textCenterY + 26);
           ctx.textAlign = "left"; // Reset
         }
       }
