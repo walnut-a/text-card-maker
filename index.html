@@ -87,7 +87,7 @@
       .panel {
         background: var(--panel);
         border: 1px solid var(--panel-border);
-        border-radius: 16px;
+        border-radius: 8px;
         box-shadow: var(--shadow);
       }
 
@@ -136,9 +136,23 @@
         line-height: 1.6;
       }
 
-      textarea:focus, input:focus {
+      textarea:focus, input:focus, select:focus {
         border-color: var(--accent);
         box-shadow: 0 0 0 1px var(--accent);
+      }
+
+      select {
+        appearance: none;
+        background: var(--bg);
+        border: 1px solid var(--panel-border);
+        border-radius: 8px;
+        padding: 10px 32px 10px 12px;
+        font-size: 14px;
+        color: var(--text);
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
       }
 
       .subgrid {
@@ -216,6 +230,23 @@
         grid-template-columns: 1fr 1fr;
         gap: 12px;
         margin-top: 8px;
+      }
+
+      .quick-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .download-action {
+        margin-top: 8px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .download-action button {
+        width: 100%;
       }
 
       button {
@@ -343,14 +374,21 @@
           gap: 16px;
         }
 
-        .actions {
+        .actions,
+        .quick-actions {
           grid-template-columns: 1fr 1fr;
           gap: 8px;
         }
 
-        .actions button {
+        .actions button,
+        .quick-actions button {
           font-size: 13px;
           padding: 10px;
+        }
+
+        .download-action button {
+          max-width: 100%;
+        }
         }
 
 
@@ -374,30 +412,33 @@
             <textarea id="contentInput" spellcheck="false" placeholder="直接粘贴文章、摘录、短评、金句都可以。段落之间用空行分隔。" autofocus></textarea>
           </div>
 
+          <div class="field">
+            <label for="linkInput">链接地址 (生成二维码)</label>
+            <input id="linkInput" type="url" placeholder="https://..." />
+          </div>
+
+          <div class="quick-actions">
+            <button type="button" class="secondary" id="sampleButton">填入示例</button>
+            <button type="button" class="secondary" id="clearButton">清空内容</button>
+          </div>
+
           <div class="subgrid">
             <div class="field">
-              <label for="linkInput">链接地址 (生成二维码)</label>
-              <input id="linkInput" type="url" placeholder="https://..." />
-            </div>
-
-            <div class="field">
-              <label>卡片风格</label>
-              <div class="custom-select-group" id="themeSelectGroup" style="grid-template-columns: repeat(4, 1fr);">
+              <label for="themeSelect">卡片风格</label>
+              <select id="themeSelect">
                 <!-- Dynamically rendered by JS -->
-              </div>
+              </select>
             </div>
             <div class="field">
-              <label>字体选择</label>
-              <div class="custom-select-group" id="fontSelectGroup">
+              <label for="fontSelect">字体选择</label>
+              <select id="fontSelect">
                 <!-- Dynamically rendered by JS -->
-              </div>
+              </select>
             </div>
           </div>
 
-          <div class="actions">
+          <div class="download-action">
             <button type="button" id="downloadButton">下载 PNG</button>
-            <button type="button" class="secondary" id="clearButton">清空内容</button>
-            <button type="button" class="secondary" id="sampleButton">填入示例</button>
           </div>
 
 
@@ -589,52 +630,38 @@
 
       let qrious = null;
 
-      const themeSelectGroup = document.getElementById("themeSelectGroup");
-      const fontSelectGroup = document.getElementById("fontSelectGroup");
+      const themeSelect = document.getElementById("themeSelect");
+      const fontSelect = document.getElementById("fontSelect");
 
-      // Dynamically render theme buttons
-      themeSelectGroup.innerHTML = "";
+      // Populate theme select
       Object.entries(themes).forEach(([key, theme]) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "select-btn";
-        btn.dataset.value = key;
-        btn.textContent = theme.label;
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = theme.label;
         if (key === currentTheme) {
-          btn.classList.add("active");
+          option.selected = true;
         }
-        themeSelectGroup.appendChild(btn);
+        themeSelect.appendChild(option);
       });
 
-      themeSelectGroup.addEventListener('click', (e) => {
-        const btn = e.target.closest('.select-btn');
-        if (!btn) return;
-        themeSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentTheme = btn.dataset.value;
+      themeSelect.addEventListener('change', (e) => {
+        currentTheme = e.target.value;
         drawCard();
       });
 
-      // Dynamically render font buttons
-      fontSelectGroup.innerHTML = "";
+      // Populate font select
       Object.entries(fonts).forEach(([key, font]) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "select-btn";
-        btn.dataset.value = key;
-        btn.textContent = font.label;
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = font.label;
         if (key === currentFont) {
-          btn.classList.add("active");
+          option.selected = true;
         }
-        fontSelectGroup.appendChild(btn);
+        fontSelect.appendChild(option);
       });
 
-      fontSelectGroup.addEventListener('click', (e) => {
-        const btn = e.target.closest('.select-btn');
-        if (!btn) return;
-        fontSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFont = btn.dataset.value;
+      fontSelect.addEventListener('change', (e) => {
+        currentFont = e.target.value;
         drawCard();
       });
 
@@ -968,12 +995,10 @@
         contentInput.value = sampleText;
         linkInput.value = "https://github.com/";
 
-        themeSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
-        themeSelectGroup.querySelector('[data-value="light"]').classList.add('active');
+        themeSelect.value = "light";
         currentTheme = "light";
 
-        fontSelectGroup.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
-        fontSelectGroup.querySelector('[data-value="system"]').classList.add('active');
+        fontSelect.value = "system";
         currentFont = "system";
 
         drawCard();
