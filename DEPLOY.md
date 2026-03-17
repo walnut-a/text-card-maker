@@ -14,7 +14,7 @@
 在终端执行以下命令：
 
 ```bash
-cd "/Users/zhaolixing/Documents/GitHub/简单前端项目/"
+cd <your-project-path>
 git remote add origin https://github.com/你的用户名/text-card-maker.git
 git branch -M main
 git push -u origin main
@@ -43,7 +43,7 @@ git push -u origin main
 
 ```bash
 # 1. 进入项目目录
-cd "/Users/zhaolixing/Documents/GitHub/简单前端项目/"
+cd <your-project-path>
 
 # 2. 添加远程仓库（替换成你的用户名）
 git remote add origin https://github.com/你的用户名/text-card-maker.git
