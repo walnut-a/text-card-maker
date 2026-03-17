@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
     <style>
       :root {
         --bg: #FAFAFA;
@@ -157,7 +157,7 @@
 
       .subgrid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 16px;
       }
 
@@ -441,6 +441,14 @@
                 <!-- Dynamically rendered by JS -->
               </select>
             </div>
+            <div class="field">
+              <label for="ratioSelect">图片比例</label>
+              <select id="ratioSelect">
+                <option value="4:5" selected>4:5</option>
+                <option value="1:1">1:1</option>
+                <option value="9:16">9:16</option>
+              </select>
+            </div>
           </div>
 
           <div class="download-action">
@@ -457,11 +465,11 @@
         <section class="panel preview-panel">
           <div class="preview-head">
             <h2 class="section-title">实时预览</h2>
-            <p class="dimension-label" id="dimensionLabel">1200 × 1500</p>
+            <p class="dimension-label" id="dimensionLabel">900 × 1125</p>
           </div>
 
           <div class="canvas-shell">
-            <canvas id="cardCanvas" width="1200" height="1500"></canvas>
+            <canvas id="cardCanvas" width="900" height="1125"></canvas>
           </div>
 
           <button id="mobileDownloadButton" class="mobile-download-btn">下载 PNG</button>
@@ -517,14 +525,7 @@
           background(ctx, width, height) {
             ctx.fillStyle = "#F5F1E8";
             ctx.fillRect(0, 0, width, height);
-
-            // Subtle paper grain
-            ctx.fillStyle = "rgba(0,0,0,0.015)";
-            for (let i = 0; i < width; i += 4) {
-              for (let j = 0; j < height; j += 4) {
-                if (Math.random() > 0.5) ctx.fillRect(i, j, 2, 2);
-              }
-            }
+            drawWarmGrain(ctx, width, height);
           },
           ink: "#2a2822",
           title: "#1A1814",
@@ -623,12 +624,18 @@
 
       const contentInput = document.getElementById("contentInput");
       const linkInput = document.getElementById("linkInput");
+      const ratioSelect = document.getElementById("ratioSelect");
       let currentTheme = "light";
       let currentFont = "system"; // Default to system font
+      let currentRatio = "4:5";
 
-      // Fixed dimensions
+      const ratios = {
+        "4:5": { width: 900, height: 1125 },
+        "1:1": { width: 900, height: 900 },
+        "9:16": { width: 900, height: 1600 },
+      };
+
       const CARD_WIDTH = 900;
-      const MAX_CARD_HEIGHT = 2400; // Maximum height before truncation
       const FIXED_FONT_SIZE = 48;
 
       let qrious = null;
@@ -668,6 +675,11 @@
         drawCard();
       });
 
+      ratioSelect.addEventListener('change', (e) => {
+        currentRatio = e.target.value;
+        drawCard();
+      });
+
       const sampleButton = document.getElementById("sampleButton");
       const clearButton = document.getElementById("clearButton");
       const downloadButton = document.getElementById("downloadButton");
@@ -677,6 +689,7 @@
       const statusText = document.getElementById("statusText");
 
       const dimensionLabel = document.getElementById("dimensionLabel");
+      const warmGrainCache = new Map();
       
 
 
@@ -791,14 +804,22 @@
         return ctx;
       }
 
-      function domainLabel(link) {
-        if (!isValidUrl(link)) return "";
-        try {
-          const url = new URL(link);
-          return url.hostname.replace(/^www\./, "");
-        } catch (error) {
-          return "";
+      function drawWarmGrain(context, width, height) {
+        const key = `${width}x${height}`;
+        if (!warmGrainCache.has(key)) {
+          const grainCanvas = document.createElement("canvas");
+          grainCanvas.width = width;
+          grainCanvas.height = height;
+          const grainCtx = grainCanvas.getContext("2d");
+          grainCtx.fillStyle = "rgba(0,0,0,0.015)";
+          for (let i = 0; i < width; i += 4) {
+            for (let j = 0; j < height; j += 4) {
+              if (Math.random() > 0.5) grainCtx.fillRect(i, j, 2, 2);
+            }
+          }
+          warmGrainCache.set(key, grainCanvas);
         }
+        context.drawImage(warmGrainCache.get(key), 0, 0, width, height);
       }
 
       function drawCard() {
@@ -806,7 +827,7 @@
         const selectedFont = fonts[currentFont];
         const text = contentInput.value;
         const link = linkInput.value.trim();
-        const { title, paragraphs, normalized } = parseContent(text);
+        const { paragraphs } = parseContent(text);
         const hasQr = !!(qrious && isValidUrl(link));
 
         statusText.textContent = isValidUrl(link) || !link ? "" : "链接格式不正确，二维码已自动关闭。";
@@ -818,8 +839,9 @@
           qrious.background = selectedTheme.card;
         }
 
-        // Fixed dimensions
-        const width = CARD_WIDTH;
+        const selectedRatio = ratios[currentRatio] || ratios["4:5"];
+        const width = selectedRatio.width || CARD_WIDTH;
+        const maxCardHeight = selectedRatio.height;
         const bodySize = FIXED_FONT_SIZE;
         const lineHeightRatio = 1.7;
         const lineHeight = bodySize * lineHeightRatio;
@@ -869,11 +891,11 @@
         // Calculate required card height
         let calculatedHeight = frameMargin * 2 + contentPadTop + contentHeight + contentPadBot + footerWithPadding;
 
-        // Check if truncation is needed
+        // Clamp by selected ratio height and truncate when needed
         let needsTruncation = false;
-        if (calculatedHeight > MAX_CARD_HEIGHT) {
+        if (calculatedHeight > maxCardHeight) {
           needsTruncation = true;
-          calculatedHeight = MAX_CARD_HEIGHT;
+          calculatedHeight = maxCardHeight;
         }
 
         const height = calculatedHeight;
@@ -988,6 +1010,19 @@
 
       function downloadImage() {
         const safeName = "share-card-" + Date.now() + ".png";
+        if (cardCanvas.toBlob) {
+          cardCanvas.toBlob((blob) => {
+            if (!blob) return;
+            const link = document.createElement("a");
+            const objectUrl = URL.createObjectURL(blob);
+            link.download = safeName;
+            link.href = objectUrl;
+            link.click();
+            URL.revokeObjectURL(objectUrl);
+          }, "image/png");
+          return;
+        }
+
         const link = document.createElement("a");
         link.download = safeName;
         link.href = cardCanvas.toDataURL("image/png");
@@ -1003,6 +1038,9 @@
 
         fontSelect.value = "system";
         currentFont = "system";
+
+        ratioSelect.value = "4:5";
+        currentRatio = "4:5";
 
         drawCard();
       }
@@ -1041,7 +1079,9 @@
           if (currentFont === 'serif') {
             drawCard();
           }
-        }).catch(() => {});
+        }).catch((error) => {
+          console.warn("字体预加载失败:", error);
+        });
       }
     </script>
   </body>
