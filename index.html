@@ -14,235 +14,258 @@
     <script id="qriousScript" defer src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
     <style>
       :root {
-        --bg: #FAFAFA;
-        --panel: #FFFFFF;
-        --panel-border: rgba(0, 0, 0, 0.06);
-        --text: #1a1a1a;
-        --muted: #666666;
-        --accent: #000000;
-        --accent-strong: #333333;
-        --shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
-        --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
-        --font-serif: "Songti SC", "Noto Serif SC", STSong, "Microsoft YaHei", serif;
+        --bg: #eee6db;
+        --bg-deep: #e4d7c7;
+        --panel: rgba(255, 250, 243, 0.84);
+        --panel-strong: rgba(255, 252, 247, 0.94);
+        --panel-border: rgba(76, 58, 41, 0.12);
+        --line-strong: rgba(76, 58, 41, 0.18);
+        --text: #1f1a16;
+        --muted: #6f645a;
+        --soft: #9b8f84;
+        --accent: #2d241d;
+        --accent-soft: #8a5f37;
+        --accent-wash: rgba(138, 95, 55, 0.14);
+        --shadow: 0 20px 60px rgba(57, 40, 22, 0.09);
+        --shadow-soft: 0 10px 30px rgba(57, 40, 22, 0.06);
+        --font-sans: "Noto Sans SC", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+        --font-serif: "Noto Serif SC", "Songti SC", STSong, serif;
       }
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg: #0A0A0A;
-          --panel: #141414;
-          --panel-border: rgba(255, 255, 255, 0.08);
-          --text: #EDEDED;
-          --muted: #A1A1A1;
-          --accent: #FFFFFF;
-          --accent-strong: #E5E5E5;
-          --shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+          --bg: #18130f;
+          --bg-deep: #201914;
+          --panel: rgba(34, 27, 23, 0.82);
+          --panel-strong: rgba(40, 31, 26, 0.92);
+          --panel-border: rgba(255, 243, 231, 0.1);
+          --line-strong: rgba(255, 243, 231, 0.16);
+          --text: #f3ece2;
+          --muted: #c3b5a7;
+          --soft: #998c7d;
+          --accent: #f4e8da;
+          --accent-soft: #d2a879;
+          --accent-wash: rgba(210, 168, 121, 0.12);
+          --shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+          --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.22);
         }
       }
 
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
 
-      html, body {
+      html,
+      body {
         margin: 0;
         min-height: 100%;
-        background-color: var(--bg);
+      }
+
+      html {
+        color-scheme: light dark;
+      }
+
+      body {
+        position: relative;
+        background:
+          radial-gradient(circle at top left, rgba(176, 127, 84, 0.18), transparent 24%),
+          radial-gradient(circle at 92% 8%, rgba(98, 126, 156, 0.13), transparent 22%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
         color: var(--text);
         font-family: var(--font-sans);
         -webkit-font-smoothing: antialiased;
-        transition: background-color 0.3s ease;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(92, 68, 44, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(92, 68, 44, 0.03) 1px, transparent 1px);
+        background-size: 34px 34px;
+        mask-image: radial-gradient(circle at center, black 24%, transparent 82%);
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at center, transparent 54%, rgba(80, 54, 30, 0.08) 100%);
+        mix-blend-mode: multiply;
       }
 
       .app {
-        width: min(1280px, calc(100vw - 48px));
+        width: min(1360px, calc(100vw - 40px));
         margin: 0 auto;
-        padding: 48px 0 80px;
+        padding: 36px 0 72px;
       }
 
       .hero {
-        margin-bottom: 48px;
+        display: grid;
+        gap: 22px;
+        margin-bottom: 30px;
+      }
+
+      .hero-grid {
+        display: block;
+      }
+
+      .hero-kicker {
+        margin: 0 0 12px;
+        color: var(--soft);
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
       }
 
       h1 {
-        margin: 0 0 16px;
-        font-size: clamp(28px, 4vw, 42px);
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        line-height: 1.2;
-      }
-
-      .hero p {
         margin: 0;
-        color: var(--muted);
-        font-size: 16px;
-        line-height: 1.6;
-        max-width: 600px;
+        font-family: var(--font-sans);
+        font-size: clamp(30px, 5vw, 62px);
+        font-weight: 500;
+        line-height: 1.04;
+        letter-spacing: -0.035em;
+        max-width: 12ch;
       }
 
       .workspace {
         display: grid;
-        grid-template-columns: 380px minmax(0, 1fr);
-        gap: 32px;
+        grid-template-columns: minmax(330px, 420px) minmax(0, 1fr);
+        gap: clamp(20px, 2.8vw, 34px);
         align-items: start;
       }
 
       .panel {
         background: var(--panel);
         border: 1px solid var(--panel-border);
-        border-radius: 8px;
+        border-radius: 16px;
         box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
       }
 
       .controls {
-        padding: 32px;
+        position: relative;
+        padding: clamp(22px, 3vw, 34px);
         display: grid;
-        gap: 24px;
+        gap: 22px;
+        overflow: hidden;
+      }
+
+      .controls::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+        height: 120px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent);
+        pointer-events: none;
+      }
+
+      .panel-heading,
+      .preview-copy-wrap {
+        display: grid;
+        gap: 8px;
       }
 
       .section-title {
         margin: 0;
         font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.05em;
+        font-weight: 700;
+        letter-spacing: 0.18em;
         text-transform: uppercase;
+        color: var(--soft);
+      }
+
+      .panel-copy,
+      .preview-copy {
+        margin: 0;
         color: var(--muted);
+        font-size: 14px;
+        line-height: 1.75;
       }
 
       .field {
         display: grid;
-        gap: 8px;
+        gap: 10px;
       }
 
-      .field label, .meta-chip span {
+      .field label {
         font-size: 13px;
-        font-weight: 500;
         color: var(--muted);
       }
 
-      textarea, input {
+      textarea,
+      input,
+      select {
         width: 100%;
         border: 1px solid var(--panel-border);
-        border-radius: 8px;
-        background: transparent;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.54);
         color: var(--text);
-        padding: 12px 14px;
+        padding: 14px 16px;
         font-family: inherit;
         font-size: 14px;
+        line-height: 1.6;
         outline: none;
-        transition: all 0.2s;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+        transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
       }
 
       textarea {
+        min-height: 230px;
         resize: vertical;
-        min-height: 200px;
-        line-height: 1.6;
       }
 
-      textarea:focus, input:focus, select:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 1px var(--accent);
+      textarea::placeholder,
+      input::placeholder {
+        color: color-mix(in srgb, var(--soft) 80%, transparent);
+      }
+
+      textarea:hover,
+      input:hover,
+      select:hover {
+        border-color: var(--line-strong);
+      }
+
+      textarea:focus,
+      input:focus,
+      select:focus {
+        border-color: color-mix(in srgb, var(--accent-soft) 55%, var(--accent));
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.62),
+          0 0 0 4px var(--accent-wash);
       }
 
       select {
         appearance: none;
-        background: var(--bg);
-        border: 1px solid var(--panel-border);
-        border-radius: 8px;
-        padding: 10px 32px 10px 12px;
-        font-size: 14px;
-        color: var(--text);
         cursor: pointer;
-        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        padding-right: 42px;
+        background-image: url("data:image/svg+xml,%3Csvg width='14' height='10' viewBox='0 0 14 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 2.25L7 7.25L12 2.25' stroke='%23716358' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
-        background-position: right 12px center;
+        background-position: right 16px center;
       }
 
+      .quick-actions,
       .subgrid {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 16px;
-      }
-
-      .custom-select-group {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      .select-btn {
-        appearance: none;
-        background: transparent;
-        border: 1px solid var(--panel-border);
-        color: var(--muted);
-        border-radius: 6px;
-        padding: 8px 12px;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 500;
-        transition: all 0.2s;
-        flex: 1;
-        text-align: center;
-      }
-
-      .select-btn:hover {
-        border-color: var(--muted);
-        color: var(--text);
-      }
-
-      .select-btn.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: var(--bg);
-      }
-
-      .select-btn .color-dot { display: none; }
-      .select-btn .ratio-icon { display: none; }
-
-      .upload-zone {
-        border: 1px dashed var(--panel-border);
-        border-radius: 8px;
-        padding: 20px;
-        text-align: center;
-        cursor: pointer;
-        color: var(--muted);
-        font-size: 13px;
-        transition: border-color 0.2s;
-      }
-
-      .upload-zone:hover {
-        border-color: var(--accent);
-        color: var(--text);
-      }
-      
-      .upload-icon { display: none; }
-
-      .clear-img-btn {
-        margin-top: 8px;
-        padding: 4px 10px;
-        font-size: 12px;
-        background: transparent;
-        border: 1px solid var(--panel-border);
-        color: var(--text);
-        border-radius: 4px;
-        cursor: pointer;
-      }
-
-      .actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
         gap: 12px;
-        margin-top: 8px;
       }
 
       .quick-actions {
-        display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-top: 12px;
+      }
+
+      .subgrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .download-action {
-        margin-top: 8px;
-        display: flex;
-        justify-content: center;
+        display: block;
       }
 
       .download-action button {
@@ -251,167 +274,209 @@
 
       button {
         appearance: none;
-        border: 1px solid var(--accent);
-        background: var(--accent);
-        color: var(--bg);
-        border-radius: 8px;
-        padding: 12px;
+        border: 1px solid transparent;
+        border-radius: 18px;
+        padding: 14px 18px;
+        background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 84%, #5a4330) 100%);
+        color: color-mix(in srgb, var(--panel-strong) 88%, white);
+        font-family: inherit;
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 700;
+        letter-spacing: 0.01em;
         cursor: pointer;
-        transition: all 0.2s;
+        box-shadow: 0 16px 28px rgba(45, 36, 29, 0.18);
+        transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease;
       }
 
       button:hover {
-        opacity: 0.9;
+        transform: translateY(-1px);
+        box-shadow: 0 20px 34px rgba(45, 36, 29, 0.22);
+      }
+
+      button:active {
+        transform: translateY(0);
       }
 
       button.secondary {
-        background: transparent;
+        background: rgba(255, 255, 255, 0.45);
         color: var(--text);
         border-color: var(--panel-border);
-      }
-
-      button.secondary:hover {
-        border-color: var(--muted);
-      }
-
-
-
-      .helper {
-        margin: 0;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.5;
-      }
-
-      .preview-panel {
-        padding: 32px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background: transparent;
-        border: none;
         box-shadow: none;
       }
 
-      .preview-head {
-        width: 100%;
-        margin-bottom: 24px;
+      button.secondary:hover {
+        background: rgba(255, 255, 255, 0.68);
       }
 
-      .preview-head h2 {
-        color: var(--text);
-        margin-bottom: 8px;
+      .helper {
+        margin: 0;
+        padding-top: 6px;
+        border-top: 1px solid rgba(95, 71, 46, 0.1);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.8;
+      }
+
+      .preview-panel {
+        position: sticky;
+        top: 28px;
+        padding: clamp(22px, 3vw, 34px);
+        display: grid;
+        gap: 18px;
+        background: rgba(255, 250, 244, 0.42);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .preview-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 16px;
       }
 
       .dimension-label {
-        color: var(--muted);
-        font-size: 13px;
         margin: 0;
-        font-weight: 500;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(95, 71, 46, 0.1);
+        background: rgba(255, 255, 255, 0.42);
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
       }
 
       .canvas-shell {
+        position: relative;
         width: 100%;
-        max-width: 540px;
-        border-radius: 2px;
-        box-shadow: var(--shadow);
-        background: transparent;
-        padding: 0;
-        border: none;
+        max-width: 620px;
+        margin: 0 auto;
+        padding: clamp(14px, 2vw, 22px);
+        border-radius: 12px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.22)),
+          rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(95, 71, 46, 0.08);
+        box-shadow: 0 14px 28px rgba(51, 36, 24, 0.08);
       }
-
-      .canvas-shell::before { display: none; }
 
       canvas {
         display: block;
         width: 100%;
         height: auto;
         border-radius: 8px;
+        box-shadow: 0 14px 28px rgba(51, 36, 24, 0.1);
+        background: transparent;
       }
 
-      .status { color: #e11d48; margin-top: 16px; font-size: 13px; }
-      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;}
+      .status {
+        min-height: 20px;
+        margin: 0;
+        color: #b74b5b;
+        font-size: 13px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+      }
 
       .mobile-download-btn {
         display: none;
         width: 100%;
-        max-width: 540px;
-        margin-top: 16px;
+        max-width: 620px;
+        margin: 2px auto 0;
       }
 
-      /* 移动端增强适配 (Mobile Responsive Enhancements) */
-      @media (max-width: 960px) {
-        .mobile-download-btn {
-          display: block;
-        }
+      .helper-link {
+        display: inline-block;
+        margin-top: 10px;
+        color: var(--soft);
+        font-size: 12px;
+        text-decoration: none;
+      }
 
-        .app {
-          padding: 24px 16px 64px;
-        }
-        
+      .helper-link:hover {
+        color: var(--text);
+      }
+
+      @media (max-width: 860px) {
         .workspace {
           grid-template-columns: 1fr;
-          gap: 40px;
-        }
-
-        .controls {
-          padding: 24px 20px;
-        }
-
-        h1 {
-          font-size: 28px;
-        }
-
-        .hero {
-          margin-bottom: 32px;
         }
 
         .preview-panel {
-          padding: 0;
-          margin-top: 16px;
+          position: static;
+          order: -1;
         }
       }
 
-      @media (max-width: 600px) {
+      @media (max-width: 720px) {
+        .app {
+          width: min(100vw - 24px, 1360px);
+          padding: 20px 0 56px;
+        }
+
+        h1 {
+          max-width: 9ch;
+        }
+
+        .hero {
+          margin-bottom: 24px;
+        }
+
+        .controls,
+        .preview-panel {
+          padding: 20px 18px;
+          border-radius: 14px;
+        }
+
         .subgrid {
           grid-template-columns: 1fr;
-          gap: 16px;
         }
 
-        .actions,
+        .preview-head {
+          flex-direction: column;
+        }
+
+        .mobile-download-btn {
+          display: block;
+        }
+      }
+
+      @media (max-width: 560px) {
         .quick-actions {
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
+          grid-template-columns: 1fr;
         }
 
-        .actions button,
-        .quick-actions button {
-          font-size: 13px;
-          padding: 10px;
+        textarea {
+          min-height: 190px;
         }
-
-        .download-action button {
-          max-width: 100%;
-        }
-        }
-
-
       }
     </style>
   </head>
   <body>
     <main class="app">
       <section class="hero">
-        
-        <h1>Text Card Maker</h1>
-        <p>最少打扰的单文件文字分享卡片生成器。输入纯文本即可获得排印精美的分享切片。</p>
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <p class="hero-kicker">Text Card Maker</p>
+            <h1>把文字整理成一张适合发出去的分享卡片</h1>
+          </div>
+        </div>
       </section>
 
       <section class="workspace">
         <form class="panel controls" id="controlsForm">
-          <h2 class="section-title">内容输入</h2>
+          <div class="panel-heading">
+            <h2 class="section-title">编辑内容</h2>
+            <p class="panel-copy">粘贴文字、补一个链接，再选择这张卡片该呈现的语气和比例。</p>
+          </div>
 
           <div class="field">
             <label for="contentInput">文字内容</label>
@@ -460,11 +525,15 @@
           <p class="helper">
             导出内容以当前预览为准。二维码会在链接合法时自动出现；如果不填链接，卡片会切换成纯文字版式。
           </p>
+          <a class="helper-link" href="https://github.com/walnut-a/text-card-maker.git" target="_blank" rel="noreferrer">View on GitHub</a>
         </form>
 
         <section class="panel preview-panel">
           <div class="preview-head">
-            <h2 class="section-title">实时预览</h2>
+            <div class="preview-copy-wrap">
+              <h2 class="section-title">实时预览</h2>
+              <p class="preview-copy">右侧画布和导出图片使用同一份渲染结果，看到什么就会下载什么。</p>
+            </div>
             <p class="dimension-label" id="dimensionLabel">900 × 1125</p>
           </div>
 
@@ -481,7 +550,6 @@
         </section>
       </section>
     </main>
-
     <script>
       const sampleText = `把日常记录下来，并不是为了制造更多噪音。
 
@@ -945,10 +1013,11 @@
         // Setup canvas with calculated dimensions
         const ctx = setupCanvas(cardCanvas, width, height);
         dimensionLabel.textContent = width + " × " + Math.round(height);
+        const cardCornerRadius = 10;
 
         // 1. Base Background with rounded corners
         ctx.save();
-        roundedRect(ctx, 0, 0, width, height, 8);
+        roundedRect(ctx, 0, 0, width, height, cardCornerRadius);
         ctx.clip();
         selectedTheme.background(ctx, width, height);
         ctx.restore();
@@ -957,7 +1026,7 @@
         ctx.save();
         ctx.strokeStyle = selectedTheme.cardStroke;
         ctx.lineWidth = 1;
-        roundedRect(ctx, frameX, frameY, frameWidth, frameHeight, 8);
+        roundedRect(ctx, frameX, frameY, frameWidth, frameHeight, cardCornerRadius);
         ctx.stroke();
         ctx.restore();
 
@@ -1072,7 +1141,7 @@
 
       function fillSample() {
         contentInput.value = sampleText;
-        linkInput.value = "https://github.com/";
+        linkInput.value = "https://github.com/walnut-a/text-card-maker";
 
         themeSelect.value = "light";
         currentTheme = "light";
