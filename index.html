@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <script defer src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <script id="qriousScript" defer src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
     <style>
       :root {
         --bg: #FAFAFA;
@@ -695,8 +695,7 @@
 
       function bootQr() {
         if (!window.QRious) {
-          statusText.textContent = "二维码库加载失败，当前只能导出纯文字卡片。";
-          return;
+          return false;
         }
         qrious = new QRious({
           element: qrCanvas,
@@ -706,6 +705,48 @@
           foreground: "black",
           level: "M",
         });
+        return true;
+      }
+
+      function ensureQrReady() {
+        if (qrious) {
+          return;
+        }
+
+        if (bootQr()) {
+          drawCard();
+          return;
+        }
+
+        const qrScript = document.getElementById("qriousScript");
+        if (!qrScript || qrScript.dataset.waiting === "true") {
+          statusText.textContent = "二维码库加载中，稍后会自动恢复。";
+          return;
+        }
+
+        qrScript.dataset.waiting = "true";
+        statusText.textContent = "二维码库加载中，稍后会自动恢复。";
+
+        qrScript.addEventListener(
+          "load",
+          () => {
+            qrScript.dataset.waiting = "false";
+            statusText.textContent = "";
+            if (bootQr()) {
+              drawCard();
+            }
+          },
+          { once: true }
+        );
+
+        qrScript.addEventListener(
+          "error",
+          () => {
+            qrScript.dataset.waiting = "false";
+            statusText.textContent = "二维码库加载失败，当前只能导出纯文字卡片。";
+          },
+          { once: true }
+        );
       }
 
       function normalizeText(input) {
@@ -1063,7 +1104,7 @@
       downloadButton.addEventListener("click", downloadImage);
       mobileDownloadButton.addEventListener("click", downloadImage);
       bindRealtimeRefresh();
-      bootQr();
+      ensureQrReady();
 
       // Initial draw
       drawCard();
