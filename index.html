@@ -115,21 +115,23 @@
       }
 
       .hero-kicker {
-        margin: 0 0 12px;
-        color: var(--soft);
-        font-size: 12px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
+        margin: 0 0 10px;
+        color: var(--text);
+        font-size: clamp(32px, 5.4vw, 68px);
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        line-height: 1;
       }
 
       h1 {
         margin: 0;
         font-family: var(--font-sans);
-        font-size: clamp(30px, 5vw, 62px);
-        font-weight: 500;
-        line-height: 1.04;
-        letter-spacing: -0.035em;
-        max-width: 12ch;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1.75;
+        letter-spacing: 0;
+        color: var(--muted);
+        max-width: 38ch;
       }
 
       .workspace {
@@ -422,8 +424,12 @@
         }
 
         h1 {
-          font-size: clamp(28px, 10.5vw, 46px);
-          max-width: none;
+          font-size: 15px;
+          max-width: 30ch;
+        }
+
+        .hero-kicker {
+          font-size: clamp(30px, 9.6vw, 42px);
         }
 
         .hero {
@@ -466,7 +472,7 @@
         <div class="hero-grid">
           <div class="hero-copy">
             <p class="hero-kicker">Text Card Maker</p>
-            <h1>把文字整理成一张适合发出去的分享卡片</h1>
+            <h1>把文字整理成适合分享的卡片，支持添加链接生成二维码</h1>
           </div>
         </div>
       </section>
@@ -475,7 +481,6 @@
         <form class="panel controls" id="controlsForm">
           <div class="panel-heading">
             <h2 class="section-title">编辑内容</h2>
-            <p class="panel-copy">粘贴文字、补一个链接，再选择这张卡片该呈现的语气和比例。</p>
           </div>
 
           <div class="field">
@@ -484,7 +489,7 @@
           </div>
 
           <div class="field">
-            <label for="linkInput">链接地址 (生成二维码)</label>
+            <label for="linkInput">链接地址 (生成二维码，可选)</label>
             <input id="linkInput" type="url" placeholder="https://..." />
           </div>
 
@@ -522,9 +527,6 @@
 
 
 
-          <p class="helper">
-            导出内容以当前预览为准。二维码会在链接合法时自动出现；如果不填链接，卡片会切换成纯文字版式。
-          </p>
           <a class="helper-link" href="https://github.com/walnut-a/text-card-maker.git" target="_blank" rel="noreferrer">View on GitHub</a>
         </form>
 
@@ -532,7 +534,6 @@
           <div class="preview-head">
             <div class="preview-copy-wrap">
               <h2 class="section-title">实时预览</h2>
-              <p class="preview-copy">右侧画布和导出图片使用同一份渲染结果，看到什么就会下载什么。</p>
             </div>
             <p class="dimension-label" id="dimensionLabel">900 × 1125</p>
           </div>
