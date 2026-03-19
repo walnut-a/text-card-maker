@@ -704,10 +704,12 @@
         "9:16": { width: 900, height: 1600 },
       };
 
+      const STORAGE_KEY = "text-card-maker.state.v1";
       const CARD_WIDTH = 900;
       const FIXED_FONT_SIZE = 48;
 
       let qrious = null;
+      let persistTimer = null;
 
       const themeSelect = document.getElementById("themeSelect");
       const fontSelect = document.getElementById("fontSelect");
@@ -725,6 +727,7 @@
 
       themeSelect.addEventListener('change', (e) => {
         currentTheme = e.target.value;
+        persistState();
         drawCard();
       });
 
@@ -741,11 +744,13 @@
 
       fontSelect.addEventListener('change', (e) => {
         currentFont = e.target.value;
+        persistState();
         drawCard();
       });
 
       ratioSelect.addEventListener('change', (e) => {
         currentRatio = e.target.value;
+        persistState();
         drawCard();
       });
 
@@ -816,6 +821,75 @@
           },
           { once: true }
         );
+      }
+
+      function readPersistedState() {
+        try {
+          const raw = window.localStorage.getItem(STORAGE_KEY);
+          if (!raw) return null;
+
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== "object") return null;
+
+          return {
+            content: typeof parsed.content === "string" ? parsed.content : "",
+            link: typeof parsed.link === "string" ? parsed.link : "",
+            theme: typeof parsed.theme === "string" ? parsed.theme : "",
+            font: typeof parsed.font === "string" ? parsed.font : "",
+            ratio: typeof parsed.ratio === "string" ? parsed.ratio : "",
+          };
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function persistState() {
+        try {
+          window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+              content: contentInput.value,
+              link: linkInput.value,
+              theme: currentTheme,
+              font: currentFont,
+              ratio: currentRatio,
+            })
+          );
+        } catch (error) {
+          // Ignore storage failures to keep the editor usable in restricted environments.
+        }
+      }
+
+      function schedulePersistState() {
+        window.clearTimeout(persistTimer);
+        persistTimer = window.setTimeout(() => {
+          persistState();
+        }, 180);
+      }
+
+      function applyPersistedState() {
+        const saved = readPersistedState();
+        if (!saved) return false;
+
+        contentInput.value = saved.content;
+        linkInput.value = saved.link;
+
+        if (saved.theme && themes[saved.theme]) {
+          currentTheme = saved.theme;
+          themeSelect.value = saved.theme;
+        }
+
+        if (saved.font && fonts[saved.font]) {
+          currentFont = saved.font;
+          fontSelect.value = saved.font;
+        }
+
+        if (saved.ratio && ratios[saved.ratio]) {
+          currentRatio = saved.ratio;
+          ratioSelect.value = saved.ratio;
+        }
+
+        return true;
       }
 
       function normalizeText(input) {
@@ -1153,19 +1227,27 @@
         ratioSelect.value = "4:5";
         currentRatio = "4:5";
 
+        persistState();
         drawCard();
       }
 
       function clearAll() {
         contentInput.value = "";
         linkInput.value = "";
+        persistState();
         drawCard();
       }
 
       function bindRealtimeRefresh() {
         [contentInput, linkInput].forEach((element) => {
-          element.addEventListener("input", drawCard);
-          element.addEventListener("change", drawCard);
+          element.addEventListener("input", () => {
+            schedulePersistState();
+            drawCard();
+          });
+          element.addEventListener("change", () => {
+            persistState();
+            drawCard();
+          });
         });
       }
 
@@ -1175,6 +1257,7 @@
       mobileDownloadButton.addEventListener("click", downloadImage);
       bindRealtimeRefresh();
       ensureQrReady();
+      applyPersistedState();
 
       // Initial draw
       drawCard();
