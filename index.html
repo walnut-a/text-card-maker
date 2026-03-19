@@ -263,7 +263,7 @@
       }
 
       .subgrid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .download-action {
@@ -500,6 +500,12 @@
 
           <div class="subgrid">
             <div class="field">
+              <label for="templateSelect">卡片模板</label>
+              <select id="templateSelect">
+                <!-- Dynamically rendered by JS -->
+              </select>
+            </div>
+            <div class="field">
               <label for="themeSelect">卡片风格</label>
               <select id="themeSelect">
                 <!-- Dynamically rendered by JS -->
@@ -559,6 +565,21 @@
 一张好的文字卡片，不只是“截图更好看”。
 
 它让信息有呼吸感，让重点有层次，也让转发这件事变得更克制、更体面。`;
+
+      const summarySampleText = `把零散文字收成一句清楚的话，再安静地分享出去。`;
+
+      const templates = {
+        quote: {
+          label: "长文",
+          sample: sampleText,
+          defaultRatio: "4:5",
+        },
+        summary: {
+          label: "短句",
+          sample: summarySampleText,
+          defaultRatio: "1:1",
+        },
+      };
 
       const themes = {
         light: {
@@ -693,7 +714,9 @@
 
       const contentInput = document.getElementById("contentInput");
       const linkInput = document.getElementById("linkInput");
+      const templateSelect = document.getElementById("templateSelect");
       const ratioSelect = document.getElementById("ratioSelect");
+      let currentTemplate = "quote";
       let currentTheme = "light";
       let currentFont = "system"; // Default to system font
       let currentRatio = "4:5";
@@ -713,6 +736,22 @@
 
       const themeSelect = document.getElementById("themeSelect");
       const fontSelect = document.getElementById("fontSelect");
+
+      Object.entries(templates).forEach(([key, template]) => {
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = template.label;
+        if (key === currentTemplate) {
+          option.selected = true;
+        }
+        templateSelect.appendChild(option);
+      });
+
+      templateSelect.addEventListener('change', (e) => {
+        currentTemplate = e.target.value;
+        persistState();
+        drawCard();
+      });
 
       // Populate theme select
       Object.entries(themes).forEach(([key, theme]) => {
@@ -834,6 +873,7 @@
           return {
             content: typeof parsed.content === "string" ? parsed.content : "",
             link: typeof parsed.link === "string" ? parsed.link : "",
+            template: typeof parsed.template === "string" ? parsed.template : "",
             theme: typeof parsed.theme === "string" ? parsed.theme : "",
             font: typeof parsed.font === "string" ? parsed.font : "",
             ratio: typeof parsed.ratio === "string" ? parsed.ratio : "",
@@ -850,6 +890,7 @@
             JSON.stringify({
               content: contentInput.value,
               link: linkInput.value,
+              template: currentTemplate,
               theme: currentTheme,
               font: currentFont,
               ratio: currentRatio,
@@ -873,6 +914,11 @@
 
         contentInput.value = saved.content;
         linkInput.value = saved.link;
+
+        if (saved.template && templates[saved.template]) {
+          currentTemplate = saved.template;
+          templateSelect.value = saved.template;
+        }
 
         if (saved.theme && themes[saved.theme]) {
           currentTheme = saved.theme;
@@ -1006,6 +1052,302 @@
         context.drawImage(warmGrainCache.get(key), 0, 0, width, height);
       }
 
+      function getDomainLabel(value) {
+        if (!isValidUrl(value)) return "";
+        try {
+          return new URL(value).hostname.replace(/^www\./, "");
+        } catch (error) {
+          return "";
+        }
+      }
+
+      function getQuoteLayout(options) {
+        const { paragraphs, selectedFont, width, maxCardHeight, hasQr } = options;
+        const bodySize = FIXED_FONT_SIZE;
+        const lineHeightRatio = 1.7;
+        const lineHeight = bodySize * lineHeightRatio;
+        const frameMargin = width * 0.02;
+        const frameX = frameMargin;
+        const frameY = frameMargin;
+        const frameWidth = width - (frameMargin * 2);
+        const contentPadX = frameWidth * 0.08;
+        const contentPadTop = frameWidth * 0.055;
+        const contentPadBot = frameWidth * 0.05;
+        const contentX = frameX + contentPadX;
+        const contentY = frameY + contentPadTop;
+        const contentWidth = frameWidth - (contentPadX * 2);
+        const footerHeight = hasQr ? 180 : 0;
+        const footerWithPadding = footerHeight > 0 ? footerHeight + 35 : 0;
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCtx.font = `400 ${bodySize}px ${selectedFont.family}`;
+
+        const bodyBlocks = paragraphs.map((paragraph) => ({
+          lines: wrapText(tempCtx, paragraph, contentWidth),
+          lineHeight,
+        }));
+
+        let contentHeight = bodySize;
+        if (paragraphs.length === 0) {
+          contentHeight += lineHeight;
+        } else {
+          for (let i = 0; i < bodyBlocks.length; i++) {
+            contentHeight += bodyBlocks[i].lines.length * lineHeight;
+            if (i < bodyBlocks.length - 1) {
+              contentHeight += bodySize * 0.8;
+            }
+          }
+        }
+
+        let calculatedHeight = frameMargin * 2 + contentPadTop + contentHeight + contentPadBot + footerWithPadding;
+        let needsTruncation = false;
+        if (calculatedHeight > maxCardHeight) {
+          needsTruncation = true;
+          calculatedHeight = maxCardHeight;
+        }
+
+        return {
+          variant: "quote",
+          bodyBlocks,
+          bodySize,
+          calculatedHeight,
+          contentPadBot,
+          contentPadTop,
+          contentWidth,
+          contentX,
+          contentY,
+          footerHeight,
+          footerWithPadding,
+          frameHeight: calculatedHeight - frameMargin * 2,
+          frameMargin,
+          frameWidth,
+          frameX,
+          frameY,
+          needsTruncation,
+          selectedFont,
+        };
+      }
+
+      function getSummaryLayout(options) {
+        const { paragraphs, selectedFont, width, maxCardHeight, hasQr, ratioKey, link } = options;
+        const frameMargin = width * 0.02;
+        const frameX = frameMargin;
+        const frameY = frameMargin;
+        const frameWidth = width - (frameMargin * 2);
+        const joinedText = paragraphs.join(" ");
+        const calculatedHeight = maxCardHeight;
+        const frameHeight = calculatedHeight - frameMargin * 2;
+        const bodySizeMap = hasQr ? {
+          "4:5": 86,
+          "1:1": 80,
+          "9:16": 92,
+        } : {
+          "4:5": 82,
+          "1:1": 76,
+          "9:16": 88,
+        };
+        const bodySize = bodySizeMap[ratioKey] || 84;
+        const fontWeight = hasQr ? 700 : 600;
+        const lineHeight = bodySize * (hasQr ? 1.18 : 1.24);
+        const contentX = frameX + frameWidth * (hasQr ? 0.085 : 0.11);
+        const contentWidth = frameWidth * (hasQr ? (ratioKey === "9:16" ? 0.74 : 0.78) : (ratioKey === "9:16" ? 0.68 : 0.7));
+        const qrSize = hasQr ? 74 : 0;
+        const footerHeight = hasQr ? 106 : 0;
+        const maxLines = ratioKey === "9:16" ? 5 : 4;
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCtx.font = `${fontWeight} ${bodySize}px ${selectedFont.family}`;
+
+        let lines = joinedText ? wrapText(tempCtx, joinedText, contentWidth) : [];
+        let needsTruncation = false;
+
+        if (!lines.length) {
+          lines = ["请输入文字..."];
+        }
+
+        if (lines.length > maxLines) {
+          needsTruncation = true;
+          lines = lines.slice(0, maxLines);
+          lines[maxLines - 1] = truncateLine(tempCtx, lines[maxLines - 1], contentWidth);
+        }
+
+        const textHeight = lines.length * lineHeight;
+        const contentY = hasQr
+          ? frameY + (ratioKey === "9:16" ? 128 : 102)
+          : Math.max(frameY + 118, frameY + (frameHeight - textHeight) / 2 - bodySize * 0.14);
+        const textBottom = contentY + textHeight;
+        const footerY = frameY + frameHeight - footerHeight - 56;
+
+        return {
+          variant: "summary",
+          bodySize,
+          calculatedHeight,
+          contentWidth,
+          contentX,
+          contentY,
+          fontWeight,
+          footerHeight,
+          footerY,
+          frameHeight,
+          frameMargin,
+          frameWidth,
+          frameX,
+          frameY,
+          hasQr,
+          lineHeight,
+          lines,
+          linkLabel: getDomainLabel(link),
+          needsTruncation,
+          qrSize,
+          selectedFont,
+          textBottom,
+        };
+      }
+
+      function renderQuoteContent(context, layout, options) {
+        const { paragraphs, selectedTheme, hasQr, qrCanvas, contentWidth } = options;
+        const {
+          bodyBlocks,
+          bodySize,
+          contentPadBot,
+          contentX,
+          contentY,
+          footerHeight,
+          footerWithPadding,
+          frameHeight,
+          frameX,
+          frameY,
+          frameWidth,
+          needsTruncation,
+          selectedFont,
+        } = layout;
+
+        const contentBottomLimit = frameY + frameHeight - contentPadBot - footerWithPadding;
+        context.textBaseline = "alphabetic";
+        context.font = `400 ${bodySize}px ${selectedFont.family}`;
+        if (context.letterSpacing !== undefined) {
+          context.letterSpacing = "0.5px";
+        }
+        context.fillStyle = selectedTheme.ink;
+
+        let cursorY = contentY + bodySize;
+
+        if (!paragraphs.length) {
+          context.fillStyle = selectedTheme.meta;
+          context.fillText("请输入文字...", contentX, cursorY);
+        }
+
+        let roomRanOut = false;
+        for (let blockIndex = 0; blockIndex < bodyBlocks.length; blockIndex += 1) {
+          const block = bodyBlocks[blockIndex];
+          for (let lineIndex = 0; lineIndex < block.lines.length; lineIndex += 1) {
+            const remaining = contentBottomLimit - cursorY;
+
+            if (remaining < block.lineHeight * 0.5) {
+              roomRanOut = true;
+              break;
+            }
+
+            let line = block.lines[lineIndex];
+            const hasMoreLines = lineIndex < block.lines.length - 1;
+            const hasMoreBlocks = blockIndex < bodyBlocks.length - 1;
+            const hasMoreContent = hasMoreLines || hasMoreBlocks;
+
+            if (needsTruncation && remaining < block.lineHeight * 1.5 && hasMoreContent) {
+              line = truncateLine(context, line, contentWidth);
+              context.fillText(line, contentX, cursorY);
+              roomRanOut = true;
+              break;
+            }
+
+            context.fillText(line, contentX, cursorY);
+            cursorY += block.lineHeight;
+          }
+          if (roomRanOut) break;
+
+          if (blockIndex < bodyBlocks.length - 1) {
+            cursorY += bodySize * 0.8;
+          }
+        }
+
+        if (hasQr) {
+          const footerY = frameY + frameHeight - contentPadBot - footerHeight + 35;
+          const dividerY = footerY - 35;
+          context.strokeStyle = selectedTheme.cardStroke;
+          context.lineWidth = 1;
+          context.beginPath();
+          context.moveTo(contentX, dividerY);
+          context.lineTo(contentX + contentWidth, dividerY);
+          context.stroke();
+
+          const qrSize = 120;
+          const qrX = contentX + contentWidth - qrSize;
+          const qrY = footerY;
+
+          context.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+          context.fillStyle = selectedTheme.meta;
+          context.font = `400 26px ${selectedFont.family}`;
+          context.textAlign = "right";
+          const textRightEdge = qrX - 20;
+          const textCenterY = footerY + qrSize / 2;
+          context.fillText("扫码查看", textRightEdge, textCenterY - 8);
+          context.fillText("原文内容", textRightEdge, textCenterY + 26);
+          context.textAlign = "left";
+        }
+      }
+
+      function renderSummaryContent(context, layout, options) {
+        const { selectedTheme, hasQr, qrCanvas } = options;
+        const {
+          bodySize,
+          contentWidth,
+          contentX,
+          contentY,
+          fontWeight,
+          footerY,
+          lines,
+          linkLabel,
+          lineHeight,
+          frameWidth,
+          frameX,
+          qrSize,
+          selectedFont,
+          textBottom,
+        } = layout;
+
+        context.textBaseline = "alphabetic";
+        context.font = `${fontWeight} ${bodySize}px ${selectedFont.family}`;
+        context.fillStyle = lines[0] === "请输入文字..." ? selectedTheme.meta : selectedTheme.ink;
+
+        let cursorY = contentY + bodySize;
+        for (const line of lines) {
+          context.fillText(line, contentX, cursorY);
+          cursorY += lineHeight;
+        }
+
+        if (hasQr) {
+          const dividerY = footerY - 24;
+          const qrX = frameX + frameWidth - 86 - qrSize;
+          const qrY = footerY;
+          const metaX = contentX;
+          const metaWidth = qrX - metaX - 28;
+
+          context.strokeStyle = selectedTheme.cardStroke;
+          context.lineWidth = 1;
+          context.beginPath();
+          context.moveTo(contentX, dividerY);
+          context.lineTo(frameX + frameWidth - 86, dividerY);
+          context.stroke();
+
+          context.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+          context.fillStyle = selectedTheme.meta;
+          context.font = `500 18px ${selectedFont.family}`;
+          context.fillText("查看原文", metaX, qrY + 22);
+          context.font = `400 18px ${selectedFont.family}`;
+          context.fillText(linkLabel || "链接二维码", metaX, qrY + 50, metaWidth);
+        }
+      }
+
       function drawCard() {
         const selectedTheme = themes[currentTheme];
         const selectedFont = fonts[currentFont];
@@ -1026,66 +1368,29 @@
         const selectedRatio = ratios[currentRatio] || ratios["4:5"];
         const width = selectedRatio.width || CARD_WIDTH;
         const maxCardHeight = selectedRatio.height;
-        const bodySize = FIXED_FONT_SIZE;
-        const lineHeightRatio = 1.7;
-        const lineHeight = bodySize * lineHeightRatio;
+        const layout = currentTemplate === "summary"
+          ? getSummaryLayout({
+              paragraphs,
+              selectedFont,
+              width,
+              maxCardHeight,
+              hasQr,
+              ratioKey: currentRatio,
+              link,
+            })
+          : getQuoteLayout({
+              paragraphs,
+              selectedFont,
+              width,
+              maxCardHeight,
+              hasQr,
+            });
+        const height = layout.calculatedHeight;
+        const frameHeight = layout.frameHeight;
+        const frameX = layout.frameX;
+        const frameY = layout.frameY;
+        const frameWidth = layout.frameWidth;
 
-        // Frame and content dimensions
-        const frameMargin = width * 0.02;
-        const frameX = frameMargin;
-        const frameY = frameMargin;
-        const frameWidth = width - (frameMargin * 2);
-
-        const contentPadX = frameWidth * 0.08; // 减小左右边距
-        const contentPadTop = frameWidth * 0.055; // 调整上边距
-        const contentPadBot = frameWidth * 0.05; // 调整下边距
-
-        const contentX = frameX + contentPadX;
-        const contentY = frameY + contentPadTop;
-        const contentWidth = frameWidth - (contentPadX * 2);
-
-        // Footer dimensions
-        const footerHeight = hasQr ? 180 : 0;
-        const footerWithPadding = footerHeight > 0 ? footerHeight + 35 : 0;
-
-        // Create temporary canvas for text measurement
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.font = `400 ${bodySize}px ${selectedFont.family}`;
-
-        // Calculate text blocks
-        const bodyBlocks = paragraphs.map((paragraph) => ({
-          lines: wrapText(tempCtx, paragraph, contentWidth),
-          lineHeight,
-        }));
-
-        // Calculate total content height
-        let contentHeight = bodySize; // Start position offset
-        if (paragraphs.length === 0) {
-          contentHeight += lineHeight; // Space for placeholder text
-        } else {
-          for (let i = 0; i < bodyBlocks.length; i++) {
-            contentHeight += bodyBlocks[i].lines.length * lineHeight;
-            if (i < bodyBlocks.length - 1) {
-              contentHeight += bodySize * 0.8; // Paragraph spacing
-            }
-          }
-        }
-
-        // Calculate required card height
-        let calculatedHeight = frameMargin * 2 + contentPadTop + contentHeight + contentPadBot + footerWithPadding;
-
-        // Clamp by selected ratio height and truncate when needed
-        let needsTruncation = false;
-        if (calculatedHeight > maxCardHeight) {
-          needsTruncation = true;
-          calculatedHeight = maxCardHeight;
-        }
-
-        const height = calculatedHeight;
-        const frameHeight = height - (frameMargin * 2);
-
-        // Setup canvas with calculated dimensions
         const ctx = setupCanvas(cardCanvas, width, height);
         dimensionLabel.textContent = width + " × " + Math.round(height);
         const cardCornerRadius = 10;
@@ -1097,99 +1402,26 @@
         selectedTheme.background(ctx, width, height);
         ctx.restore();
 
-        // 2. Card Frame with rounded corners
-        ctx.save();
-        ctx.strokeStyle = selectedTheme.cardStroke;
-        ctx.lineWidth = 1;
-        roundedRect(ctx, frameX, frameY, frameWidth, frameHeight, cardCornerRadius);
-        ctx.stroke();
-        ctx.restore();
-
-        // 3. Calculate content bottom limit
-        const contentBottomLimit = frameY + frameHeight - contentPadBot - footerWithPadding;
-
-        // 4. Draw text content
-        ctx.textBaseline = "alphabetic";
-        ctx.font = `400 ${bodySize}px ${selectedFont.family}`;
-        if (ctx.letterSpacing !== undefined) {
-          ctx.letterSpacing = '0.5px';
-        }
-        ctx.fillStyle = selectedTheme.ink;
-
-        let cursorY = contentY + bodySize;
-
-        if (!paragraphs.length) {
-          ctx.fillStyle = selectedTheme.meta;
-          ctx.fillText("请输入文字...", contentX, cursorY);
-        }
-
-        let roomRanOut = false;
-        for (let blockIndex = 0; blockIndex < bodyBlocks.length; blockIndex += 1) {
-          const block = bodyBlocks[blockIndex];
-          for (let lineIndex = 0; lineIndex < block.lines.length; lineIndex += 1) {
-            const remaining = contentBottomLimit - cursorY;
-
-            // Not enough space for this line
-            if (remaining < block.lineHeight * 0.5) {
-              roomRanOut = true;
-              break;
-            }
-
-            let line = block.lines[lineIndex];
-
-            // Check if there's more content after this line
-            const hasMoreLines = lineIndex < block.lines.length - 1;
-            const hasMoreBlocks = blockIndex < bodyBlocks.length - 1;
-            const hasMoreContent = hasMoreLines || hasMoreBlocks;
-
-            // If we're running out of space and there's more content, truncate
-            if (needsTruncation && remaining < block.lineHeight * 1.5 && hasMoreContent) {
-              line = truncateLine(ctx, line, contentWidth);
-              ctx.fillText(line, contentX, cursorY);
-              roomRanOut = true;
-              break;
-            }
-
-            ctx.fillText(line, contentX, cursorY);
-            cursorY += block.lineHeight;
-          }
-          if (roomRanOut) break;
-
-          // Add paragraph spacing
-          if (blockIndex < bodyBlocks.length - 1) {
-            cursorY += bodySize * 0.8;
-          }
-        }
-
-        // 5. Footer with QR code
-        if (hasQr) {
-          const footerY = frameY + frameHeight - contentPadBot - footerHeight + 35;
-
-          // Draw divider line
-          const dividerY = footerY - 35;
+        if (layout.variant !== "summary") {
+          // 2. Card Frame with rounded corners
+          ctx.save();
           ctx.strokeStyle = selectedTheme.cardStroke;
           ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(contentX, dividerY);
-          ctx.lineTo(contentX + contentWidth, dividerY);
+          roundedRect(ctx, frameX, frameY, frameWidth, frameHeight, cardCornerRadius);
           ctx.stroke();
+          ctx.restore();
+        }
 
-          // QR code
-          const qrSize = 120;
-          const qrX = contentX + contentWidth - qrSize;
-          const qrY = footerY;
-
-          ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
-
-          // Scan text
-          ctx.fillStyle = selectedTheme.meta;
-          ctx.font = `400 26px ${selectedFont.family}`;
-          ctx.textAlign = "right";
-          const textRightEdge = qrX - 20;
-          const textCenterY = footerY + qrSize / 2;
-          ctx.fillText("扫码查看", textRightEdge, textCenterY - 8);
-          ctx.fillText("原文内容", textRightEdge, textCenterY + 26);
-          ctx.textAlign = "left"; // Reset
+        if (layout.variant === "summary") {
+          renderSummaryContent(ctx, layout, { selectedTheme, hasQr, qrCanvas });
+        } else {
+          renderQuoteContent(ctx, layout, {
+            paragraphs,
+            selectedTheme,
+            hasQr,
+            qrCanvas,
+            contentWidth: layout.contentWidth,
+          });
         }
       }
 
@@ -1215,7 +1447,8 @@
       }
 
       function fillSample() {
-        contentInput.value = sampleText;
+        const activeTemplate = templates[currentTemplate] || templates.quote;
+        contentInput.value = activeTemplate.sample;
         linkInput.value = "https://github.com/walnut-a/text-card-maker";
 
         themeSelect.value = "light";
@@ -1224,8 +1457,8 @@
         fontSelect.value = "system";
         currentFont = "system";
 
-        ratioSelect.value = "4:5";
-        currentRatio = "4:5";
+        ratioSelect.value = activeTemplate.defaultRatio;
+        currentRatio = activeTemplate.defaultRatio;
 
         persistState();
         drawCard();
