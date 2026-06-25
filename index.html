@@ -266,6 +266,10 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      .template-options[hidden] {
+        display: none;
+      }
+
       .download-action {
         display: block;
       }
@@ -493,6 +497,20 @@
             <input id="linkInput" type="url" placeholder="https://..." />
           </div>
 
+          <div class="subgrid template-options" id="lyricOptions" hidden>
+            <div class="field">
+              <label for="songInput">歌曲名</label>
+              <input id="songInput" type="text" placeholder="-- 歌名 · 歌手" />
+            </div>
+            <div class="field">
+              <label for="songAlignSelect">歌曲名对齐</label>
+              <select id="songAlignSelect">
+                <option value="right" selected>右对齐</option>
+                <option value="left">左对齐</option>
+              </select>
+            </div>
+          </div>
+
           <div class="quick-actions">
             <button type="button" class="secondary" id="sampleButton">填入示例</button>
             <button type="button" class="secondary" id="clearButton">清空内容</button>
@@ -568,6 +586,12 @@
 
       const summarySampleText = `把零散文字收成一句清楚的话，再安静地分享出去。`;
 
+      const lyricsSampleText = `人群散去以后
+灯还亮着
+
+我把没说完的话
+藏进下一阵风里`;
+
       const templates = {
         quote: {
           label: "长文",
@@ -578,6 +602,14 @@
           label: "短句",
           sample: summarySampleText,
           defaultRatio: "1:1",
+        },
+        lyrics: {
+          label: "歌词",
+          sample: lyricsSampleText,
+          song: "-- 歌名 · 歌手",
+          sampleLink: "",
+          defaultRatio: "4:5",
+          defaultSongAlign: "right",
         },
       };
 
@@ -714,12 +746,16 @@
 
       const contentInput = document.getElementById("contentInput");
       const linkInput = document.getElementById("linkInput");
+      const songInput = document.getElementById("songInput");
+      const songAlignSelect = document.getElementById("songAlignSelect");
+      const lyricOptions = document.getElementById("lyricOptions");
       const templateSelect = document.getElementById("templateSelect");
       const ratioSelect = document.getElementById("ratioSelect");
       let currentTemplate = "quote";
       let currentTheme = "light";
       let currentFont = "system"; // Default to system font
       let currentRatio = "4:5";
+      let currentSongAlign = "right";
 
       const ratios = {
         "4:5": { width: 900, height: 1125 },
@@ -749,6 +785,7 @@
 
       templateSelect.addEventListener('change', (e) => {
         currentTemplate = e.target.value;
+        updateTemplateOptions();
         persistState();
         drawCard();
       });
@@ -789,6 +826,12 @@
 
       ratioSelect.addEventListener('change', (e) => {
         currentRatio = e.target.value;
+        persistState();
+        drawCard();
+      });
+
+      songAlignSelect.addEventListener("change", (e) => {
+        currentSongAlign = e.target.value === "left" ? "left" : "right";
         persistState();
         drawCard();
       });
@@ -873,6 +916,8 @@
           return {
             content: typeof parsed.content === "string" ? parsed.content : "",
             link: typeof parsed.link === "string" ? parsed.link : "",
+            song: typeof parsed.song === "string" ? parsed.song : "",
+            songAlign: parsed.songAlign === "left" ? "left" : parsed.songAlign === "right" ? "right" : "",
             template: typeof parsed.template === "string" ? parsed.template : "",
             theme: typeof parsed.theme === "string" ? parsed.theme : "",
             font: typeof parsed.font === "string" ? parsed.font : "",
@@ -890,6 +935,8 @@
             JSON.stringify({
               content: contentInput.value,
               link: linkInput.value,
+              song: songInput.value,
+              songAlign: currentSongAlign,
               template: currentTemplate,
               theme: currentTheme,
               font: currentFont,
@@ -914,6 +961,7 @@
 
         contentInput.value = saved.content;
         linkInput.value = saved.link;
+        songInput.value = saved.song;
 
         if (saved.template && templates[saved.template]) {
           currentTemplate = saved.template;
@@ -935,11 +983,21 @@
           ratioSelect.value = saved.ratio;
         }
 
+        if (saved.songAlign) {
+          currentSongAlign = saved.songAlign;
+          songAlignSelect.value = saved.songAlign;
+        }
+
+        updateTemplateOptions();
         return true;
       }
 
+      function updateTemplateOptions() {
+        lyricOptions.hidden = currentTemplate !== "lyrics";
+      }
+
       function normalizeText(input) {
-        return input.replace(/\r\n/g, "\n").replace(/\u00a0/g, " ").trim();
+        return input.replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\u00a0/g, " ");
       }
 
       function addSpacesBetweenCJKAndAlphanumeric(text) {
@@ -951,15 +1009,24 @@
 
       function parseContent(text) {
         const normalized = normalizeText(text);
-        const blocks = normalized
-          ? normalized
-              .split(/\n\s*\n+/)
-              .map((block) => addSpacesBetweenCJKAndAlphanumeric(block.replace(/\n+/g, " ").replace(/\s+/g, " ").trim()))
-              .filter(Boolean)
+        const lines = normalized
+          ? normalized.split("\n").map((line) => addSpacesBetweenCJKAndAlphanumeric(line.replace(/[ \t]+/g, " ").trim()))
           : [];
+        const hasText = lines.some(Boolean);
+        const visibleLines = hasText ? lines : [];
+        const summaryText = addSpacesBetweenCJKAndAlphanumeric(
+          visibleLines.filter(Boolean).join(" ").replace(/\s+/g, " ").trim()
+        );
 
         // No title extraction - treat all content as body paragraphs
-        return { title: "", paragraphs: blocks, normalized };
+        return {
+          title: "",
+          paragraphs: visibleLines,
+          lines: visibleLines,
+          normalized,
+          summaryText,
+          hasText,
+        };
       }
 
       function isValidUrl(value) {
@@ -1083,7 +1150,7 @@
         tempCtx.font = `400 ${bodySize}px ${selectedFont.family}`;
 
         const bodyBlocks = paragraphs.map((paragraph) => ({
-          lines: wrapText(tempCtx, paragraph, contentWidth),
+          lines: paragraph ? wrapText(tempCtx, paragraph, contentWidth) : [""],
           lineHeight,
         }));
 
@@ -1093,9 +1160,6 @@
         } else {
           for (let i = 0; i < bodyBlocks.length; i++) {
             contentHeight += bodyBlocks[i].lines.length * lineHeight;
-            if (i < bodyBlocks.length - 1) {
-              contentHeight += bodySize * 0.8;
-            }
           }
         }
 
@@ -1129,12 +1193,12 @@
       }
 
       function getSummaryLayout(options) {
-        const { paragraphs, selectedFont, width, maxCardHeight, hasQr, ratioKey, link } = options;
+        const { paragraphs, summaryText, selectedFont, width, maxCardHeight, hasQr, ratioKey, link } = options;
         const frameMargin = width * 0.02;
         const frameX = frameMargin;
         const frameY = frameMargin;
         const frameWidth = width - (frameMargin * 2);
-        const joinedText = paragraphs.join(" ");
+        const joinedText = summaryText || paragraphs.filter(Boolean).join(" ");
         const calculatedHeight = maxCardHeight;
         const frameHeight = calculatedHeight - frameMargin * 2;
         const bodySizeMap = hasQr ? {
@@ -1204,6 +1268,85 @@
         };
       }
 
+      function getLyricsLayout(options) {
+        const { lines, songName, songAlign, selectedFont, width, maxCardHeight, hasQr, ratioKey } = options;
+        const frameMargin = width * 0.02;
+        const frameX = frameMargin;
+        const frameY = frameMargin;
+        const frameWidth = width - (frameMargin * 2);
+        const calculatedHeight = maxCardHeight;
+        const frameHeight = calculatedHeight - frameMargin * 2;
+        const contentPadX = frameWidth * 0.1;
+        const contentPadTop = frameWidth * (ratioKey === "9:16" ? 0.1 : 0.085);
+        const contentPadBot = frameWidth * 0.075;
+        const contentX = frameX + contentPadX;
+        const contentY = frameY + contentPadTop;
+        const contentWidth = frameWidth - contentPadX * 2;
+        const bodySizeMap = {
+          "4:5": 45,
+          "1:1": 40,
+          "9:16": 48,
+        };
+        const bodySize = bodySizeMap[ratioKey] || 45;
+        const lineHeight = bodySize * 1.7;
+        const songSize = Math.max(28, Math.round(bodySize * 0.72));
+        const songLineHeight = songName ? songSize * 1.5 : 0;
+        const qrSize = hasQr ? 96 : 0;
+        const qrBandHeight = hasQr ? qrSize + 38 : 0;
+        const songY = frameY + frameHeight - contentPadBot - qrBandHeight;
+        const songX = songAlign === "left" ? contentX : contentX + contentWidth;
+        const contentBottomLimit = songY - songLineHeight - bodySize * 0.9;
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCtx.font = `400 ${bodySize}px ${selectedFont.family}`;
+
+        const lyricLines = lines.length ? lines : [];
+        const bodyBlocks = lyricLines.map((line) => ({
+          lines: line ? wrapText(tempCtx, line, contentWidth) : [""],
+          lineHeight,
+        }));
+
+        let contentHeight = bodySize;
+        if (!bodyBlocks.length) {
+          contentHeight += lineHeight;
+        } else {
+          for (const block of bodyBlocks) {
+            contentHeight += block.lines.length * lineHeight;
+          }
+        }
+
+        const needsTruncation = contentY + contentHeight > contentBottomLimit;
+
+        return {
+          variant: "lyrics",
+          bodyBlocks,
+          bodySize,
+          calculatedHeight,
+          contentBottomLimit,
+          contentPadBot,
+          contentWidth,
+          contentX,
+          contentY,
+          frameHeight,
+          frameMargin,
+          frameWidth,
+          frameX,
+          frameY,
+          hasQr,
+          lineHeight,
+          needsTruncation,
+          qrBandHeight,
+          qrSize,
+          selectedFont,
+          songAlign: songAlign === "left" ? "left" : "right",
+          songLineHeight,
+          songName,
+          songSize,
+          songX,
+          songY,
+        };
+      }
+
       function renderQuoteContent(context, layout, options) {
         const { paragraphs, selectedTheme, hasQr, qrCanvas, contentWidth } = options;
         const {
@@ -1265,9 +1408,6 @@
           }
           if (roomRanOut) break;
 
-          if (blockIndex < bodyBlocks.length - 1) {
-            cursorY += bodySize * 0.8;
-          }
         }
 
         if (hasQr) {
@@ -1348,12 +1488,110 @@
         }
       }
 
+      function renderLyricsContent(context, layout, options) {
+        const { selectedTheme, hasQr, qrCanvas, contentWidth } = options;
+        const {
+          bodyBlocks,
+          bodySize,
+          contentBottomLimit,
+          contentX,
+          contentY,
+          frameHeight,
+          frameX,
+          frameY,
+          frameWidth,
+          needsTruncation,
+          qrSize,
+          selectedFont,
+          songAlign,
+          songName,
+          songSize,
+          songX,
+          songY,
+        } = layout;
+
+        context.textBaseline = "alphabetic";
+        context.font = `400 ${bodySize}px ${selectedFont.family}`;
+        if (context.letterSpacing !== undefined) {
+          context.letterSpacing = "0.5px";
+        }
+        context.fillStyle = selectedTheme.ink;
+
+        let cursorY = contentY + bodySize;
+
+        if (!bodyBlocks.length) {
+          context.fillStyle = selectedTheme.meta;
+          context.fillText("请输入歌词...", contentX, cursorY);
+        }
+
+        let roomRanOut = false;
+        for (let blockIndex = 0; blockIndex < bodyBlocks.length; blockIndex += 1) {
+          const block = bodyBlocks[blockIndex];
+          for (let lineIndex = 0; lineIndex < block.lines.length; lineIndex += 1) {
+            const remaining = contentBottomLimit - cursorY;
+
+            if (remaining < block.lineHeight * 0.5) {
+              roomRanOut = true;
+              break;
+            }
+
+            let line = block.lines[lineIndex];
+            const hasMoreLines = lineIndex < block.lines.length - 1;
+            const hasMoreBlocks = blockIndex < bodyBlocks.length - 1;
+            const hasMoreContent = hasMoreLines || hasMoreBlocks;
+
+            if (needsTruncation && remaining < block.lineHeight * 1.5 && hasMoreContent) {
+              line = truncateLine(context, line, contentWidth);
+              context.fillText(line, contentX, cursorY);
+              roomRanOut = true;
+              break;
+            }
+
+            if (line) {
+              context.fillText(line, contentX, cursorY);
+            }
+            cursorY += block.lineHeight;
+          }
+          if (roomRanOut) break;
+        }
+
+        if (songName) {
+          context.fillStyle = selectedTheme.meta;
+          context.font = `500 ${songSize}px ${selectedFont.family}`;
+          context.textAlign = songAlign;
+          context.fillText(truncateLine(context, songName, contentWidth), songX, songY);
+          context.textAlign = "left";
+        }
+
+        if (hasQr) {
+          const qrY = frameY + frameHeight - qrSize - 34;
+          const qrX = frameX + frameWidth - (frameWidth * 0.1) - qrSize;
+          const dividerY = qrY - 24;
+
+          context.strokeStyle = selectedTheme.cardStroke;
+          context.lineWidth = 1;
+          context.beginPath();
+          context.moveTo(contentX, dividerY);
+          context.lineTo(contentX + contentWidth, dividerY);
+          context.stroke();
+
+          context.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+          context.fillStyle = selectedTheme.meta;
+          context.font = `400 20px ${selectedFont.family}`;
+          context.textAlign = "right";
+          context.fillText("扫码查看", qrX - 22, qrY + 38);
+          context.fillText("相关链接", qrX - 22, qrY + 68);
+          context.textAlign = "left";
+        }
+      }
+
       function drawCard() {
         const selectedTheme = themes[currentTheme];
         const selectedFont = fonts[currentFont];
         const text = contentInput.value;
         const link = linkInput.value.trim();
-        const { paragraphs } = parseContent(text);
+        const songName = songInput.value.trim();
+        const { paragraphs, lines, summaryText } = parseContent(text);
         const hasQr = !!(qrious && isValidUrl(link));
 
         statusText.textContent = isValidUrl(link) || !link ? "" : "链接格式不正确，二维码已自动关闭。";
@@ -1368,23 +1606,38 @@
         const selectedRatio = ratios[currentRatio] || ratios["4:5"];
         const width = selectedRatio.width || CARD_WIDTH;
         const maxCardHeight = selectedRatio.height;
-        const layout = currentTemplate === "summary"
-          ? getSummaryLayout({
+        let layout;
+        if (currentTemplate === "summary") {
+          layout = getSummaryLayout({
               paragraphs,
+              summaryText,
               selectedFont,
               width,
               maxCardHeight,
               hasQr,
               ratioKey: currentRatio,
               link,
-            })
-          : getQuoteLayout({
+            });
+        } else if (currentTemplate === "lyrics") {
+          layout = getLyricsLayout({
+              lines,
+              songName,
+              songAlign: currentSongAlign,
+              selectedFont,
+              width,
+              maxCardHeight,
+              hasQr,
+              ratioKey: currentRatio,
+            });
+        } else {
+          layout = getQuoteLayout({
               paragraphs,
               selectedFont,
               width,
               maxCardHeight,
               hasQr,
             });
+        }
         const height = layout.calculatedHeight;
         const frameHeight = layout.frameHeight;
         const frameX = layout.frameX;
@@ -1414,6 +1667,13 @@
 
         if (layout.variant === "summary") {
           renderSummaryContent(ctx, layout, { selectedTheme, hasQr, qrCanvas });
+        } else if (layout.variant === "lyrics") {
+          renderLyricsContent(ctx, layout, {
+            selectedTheme,
+            hasQr,
+            qrCanvas,
+            contentWidth: layout.contentWidth,
+          });
         } else {
           renderQuoteContent(ctx, layout, {
             paragraphs,
@@ -1449,7 +1709,8 @@
       function fillSample() {
         const activeTemplate = templates[currentTemplate] || templates.quote;
         contentInput.value = activeTemplate.sample;
-        linkInput.value = "https://github.com/walnut-a/text-card-maker";
+        linkInput.value = activeTemplate.sampleLink ?? "https://github.com/walnut-a/text-card-maker";
+        songInput.value = activeTemplate.song || "";
 
         themeSelect.value = "light";
         currentTheme = "light";
@@ -1460,6 +1721,10 @@
         ratioSelect.value = activeTemplate.defaultRatio;
         currentRatio = activeTemplate.defaultRatio;
 
+        currentSongAlign = activeTemplate.defaultSongAlign || "right";
+        songAlignSelect.value = currentSongAlign;
+
+        updateTemplateOptions();
         persistState();
         drawCard();
       }
@@ -1467,12 +1732,13 @@
       function clearAll() {
         contentInput.value = "";
         linkInput.value = "";
+        songInput.value = "";
         persistState();
         drawCard();
       }
 
       function bindRealtimeRefresh() {
-        [contentInput, linkInput].forEach((element) => {
+        [contentInput, linkInput, songInput].forEach((element) => {
           element.addEventListener("input", () => {
             schedulePersistState();
             drawCard();
@@ -1489,8 +1755,9 @@
       downloadButton.addEventListener("click", downloadImage);
       mobileDownloadButton.addEventListener("click", downloadImage);
       bindRealtimeRefresh();
-      ensureQrReady();
       applyPersistedState();
+      updateTemplateOptions();
+      ensureQrReady();
 
       // Initial draw
       drawCard();
