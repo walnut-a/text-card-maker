@@ -159,3 +159,25 @@ test("lyrics template supports a separate song line with explicit alignment", ()
   assert.equal(layout.songAlign, "right");
   assert.ok(layout.songY > layout.contentY);
 });
+
+test("lyrics layout uses reference-like spacing and signature treatment", () => {
+  const { getLyricsLayout } = loadApp();
+
+  const layout = getLyricsLayout({
+    lines: ["我们就像隔着一层玻璃，", "", "看得见却触不及，", "", "虽然我离你几毫米，", "", "你不会知道我有多着急。"],
+    songName: "词不达意 · 林忆莲",
+    songAlign: "right",
+    selectedFont: { family: "system-ui, sans-serif" },
+    width: 900,
+    maxCardHeight: 900,
+    hasQr: false,
+    ratioKey: "1:1",
+  });
+
+  assert.ok(layout.frameMargin >= 48, "lyrics cards should keep a calmer outer frame margin");
+  assert.ok(layout.contentX > 120 && layout.contentX < 150, "lyrics text should sit in the reference-like left column");
+  assert.ok(layout.bodySize >= 42, "square lyric cards need a stronger body size");
+  assert.ok(layout.bodyBlocks[1].lineHeight < layout.lineHeight, "blank lines should act as compact rhythm spacers");
+  assert.ok(layout.signatureLineWidth >= 56, "right signature should include a leading rule");
+  assert.ok(layout.songX < layout.frameX + layout.frameWidth - 60, "signature should not hug the bottom-right corner");
+});

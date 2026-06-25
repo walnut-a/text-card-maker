@@ -1270,31 +1270,36 @@
 
       function getLyricsLayout(options) {
         const { lines, songName, songAlign, selectedFont, width, maxCardHeight, hasQr, ratioKey } = options;
-        const frameMargin = width * 0.02;
+        const frameMarginRatioMap = {
+          "4:5": 0.055,
+          "1:1": 0.06,
+          "9:16": 0.05,
+        };
+        const frameMargin = Math.round(width * (frameMarginRatioMap[ratioKey] || 0.055));
         const frameX = frameMargin;
         const frameY = frameMargin;
         const frameWidth = width - (frameMargin * 2);
         const calculatedHeight = maxCardHeight;
         const frameHeight = calculatedHeight - frameMargin * 2;
-        const contentPadX = frameWidth * 0.1;
-        const contentPadTop = frameWidth * (ratioKey === "9:16" ? 0.1 : 0.085);
-        const contentPadBot = frameWidth * 0.075;
+        const contentPadX = frameWidth * (ratioKey === "9:16" ? 0.1 : 0.095);
+        const contentPadTop = frameWidth * (ratioKey === "9:16" ? 0.095 : 0.075);
+        const contentPadBot = frameWidth * (ratioKey === "9:16" ? 0.085 : 0.08);
         const contentX = frameX + contentPadX;
         const contentY = frameY + contentPadTop;
         const contentWidth = frameWidth - contentPadX * 2;
         const bodySizeMap = {
-          "4:5": 45,
-          "1:1": 40,
-          "9:16": 48,
+          "4:5": 48,
+          "1:1": 44,
+          "9:16": 50,
         };
         const bodySize = bodySizeMap[ratioKey] || 45;
-        const lineHeight = bodySize * 1.7;
-        const songSize = Math.max(28, Math.round(bodySize * 0.72));
+        const lineHeight = bodySize * 1.42;
+        const blankLineHeight = bodySize * 0.78;
+        const songSize = Math.max(28, Math.round(bodySize * 0.68));
         const songLineHeight = songName ? songSize * 1.5 : 0;
         const qrSize = hasQr ? 96 : 0;
         const qrBandHeight = hasQr ? qrSize + 38 : 0;
-        const songY = frameY + frameHeight - contentPadBot - qrBandHeight;
-        const songX = songAlign === "left" ? contentX : contentX + contentWidth;
+        const songY = frameY + frameHeight - contentPadBot - qrBandHeight - bodySize * 0.18;
         const contentBottomLimit = songY - songLineHeight - bodySize * 0.9;
         const tempCanvas = document.createElement("canvas");
         const tempCtx = tempCanvas.getContext("2d");
@@ -1303,7 +1308,7 @@
         const lyricLines = lines.length ? lines : [];
         const bodyBlocks = lyricLines.map((line) => ({
           lines: line ? wrapText(tempCtx, line, contentWidth) : [""],
-          lineHeight,
+          lineHeight: line ? lineHeight : blankLineHeight,
         }));
 
         let contentHeight = bodySize;
@@ -1316,9 +1321,21 @@
         }
 
         const needsTruncation = contentY + contentHeight > contentBottomLimit;
+        const signatureLineWidth = songName ? Math.round(bodySize * 1.55) : 0;
+        const signatureGap = songName ? Math.round(bodySize * 0.38) : 0;
+        tempCtx.font = `500 ${songSize}px ${selectedFont.family}`;
+        const measuredSongWidth = songName ? tempCtx.measureText(songName).width : 0;
+        const songTextMaxWidth = Math.max(0, contentWidth - signatureLineWidth - signatureGap);
+        const songTextWidth = Math.min(measuredSongWidth, songTextMaxWidth);
+        const signatureGroupWidth = signatureLineWidth + signatureGap + songTextWidth;
+        const signatureStartX = songAlign === "left" ? contentX : contentX + contentWidth - signatureGroupWidth;
+        const signatureLineX = signatureStartX;
+        const signatureLineEndX = signatureLineX + signatureLineWidth;
+        const songX = signatureLineEndX + signatureGap;
 
         return {
           variant: "lyrics",
+          blankLineHeight,
           bodyBlocks,
           bodySize,
           calculatedHeight,
@@ -1338,10 +1355,17 @@
           qrBandHeight,
           qrSize,
           selectedFont,
+          signatureGap,
+          signatureGroupWidth,
+          signatureLineEndX,
+          signatureLineWidth,
+          signatureLineX,
           songAlign: songAlign === "left" ? "left" : "right",
           songLineHeight,
           songName,
           songSize,
+          songTextMaxWidth,
+          songTextWidth,
           songX,
           songY,
         };
@@ -1503,9 +1527,13 @@
           needsTruncation,
           qrSize,
           selectedFont,
+          signatureLineEndX,
+          signatureLineWidth,
+          signatureLineX,
           songAlign,
           songName,
           songSize,
+          songTextMaxWidth,
           songX,
           songY,
         } = layout;
@@ -1556,10 +1584,21 @@
         }
 
         if (songName) {
+          const signatureLineY = songY - songSize * 0.38;
+          context.save();
+          context.globalAlpha = 0.6;
+          context.strokeStyle = selectedTheme.meta;
+          context.lineWidth = 1;
+          context.beginPath();
+          context.moveTo(signatureLineX, signatureLineY);
+          context.lineTo(signatureLineEndX, signatureLineY);
+          context.stroke();
+          context.restore();
+
           context.fillStyle = selectedTheme.meta;
           context.font = `500 ${songSize}px ${selectedFont.family}`;
-          context.textAlign = songAlign;
-          context.fillText(truncateLine(context, songName, contentWidth), songX, songY);
+          context.textAlign = "left";
+          context.fillText(truncateLine(context, songName, songTextMaxWidth), songX, songY);
           context.textAlign = "left";
         }
 
